@@ -4,26 +4,39 @@ import pandas as pd
 import plotly.express as px
 import json
 from datetime import timedelta
+import os
 
 # Set layout
 st.set_page_config(page_title="Uber Real-Time Dashboard", layout="wide")
 st.title("🚕 Uber Real-Time Analytics Dashboard")
 
-# Load data (you can change these paths as needed)
-ride_path = "ride_events (5).json"
-traffic_path = "traffic_surge_alerts (1).json"
+# Load data
+ride_path = "ride_events.json"
+traffic_path = "traffic_surge_alerts.json"
+
+# Check if files exist
+if not os.path.exists(ride_path):
+    st.error(f"Ride events file not found: {ride_path}")
+    st.stop()
+if not os.path.exists(traffic_path):
+    st.error(f"Traffic alerts file not found: {traffic_path}")
+    st.stop()
 
 # Load JSON data
 df_rides = pd.read_json(ride_path)
 
 # Transform ride data to expected structure
-df_rides['timestamp'] = pd.to_datetime(df_rides['timestamp_event'])
-df_rides['pickup_time'] = df_rides['timestamp']
-df_rides['dropoff_time'] = df_rides['pickup_time'] + timedelta(minutes=5)
-df_rides = df_rides[df_rides['start_coordinates'].apply(lambda x: isinstance(x, list) and len(x) == 2)]
-df_rides[['pickup_lat', 'pickup_lon']] = pd.DataFrame(df_rides['start_coordinates'].tolist(), index=df_rides.index)
-df_rides['pickup_zone'] = df_rides['start_location']
-df_rides['status'] = df_rides['event_type']
+if 'timestamp_event' in df_rides.columns:
+    df_rides['timestamp'] = pd.to_datetime(df_rides['timestamp_event'])
+    df_rides['pickup_time'] = df_rides['timestamp']
+    df_rides['dropoff_time'] = df_rides['pickup_time'] + timedelta(minutes=5)
+    df_rides = df_rides[df_rides['start_coordinates'].apply(lambda x: isinstance(x, list) and len(x) == 2)]
+    df_rides[['pickup_lat', 'pickup_lon']] = pd.DataFrame(df_rides['start_coordinates'].tolist(), index=df_rides.index)
+    df_rides['pickup_zone'] = df_rides['start_location']
+    df_rides['status'] = df_rides['event_type']
+else:
+    st.error("Missing expected columns in ride events file.")
+    st.stop()
 
 # Load and flatten traffic alerts
 def load_alerts(path):
@@ -91,5 +104,3 @@ st.subheader("8. Hourly Ride Distribution")
 df_rides['hour'] = df_rides['timestamp'].dt.hour
 fig8 = px.histogram(df_rides, x='hour', nbins=24)
 st.plotly_chart(fig8)
-
-
