@@ -3,8 +3,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import json
-from datetime import timedelta
 import os
+import ast
+from datetime import timedelta
 
 # Set layout
 st.set_page_config(page_title="Uber Real-Time Dashboard", layout="wide")
@@ -25,12 +26,16 @@ if not os.path.exists(traffic_path):
 # Load JSON data
 df_rides = pd.read_json(ride_path)
 
-# Transform ride data to expected structure
+# Transform ride data
 if 'timestamp_event' in df_rides.columns:
     df_rides['timestamp'] = pd.to_datetime(df_rides['timestamp_event'])
     df_rides['pickup_time'] = df_rides['timestamp']
     df_rides['dropoff_time'] = df_rides['pickup_time'] + timedelta(minutes=5)
+    
+    # Fix start_coordinates from string to list
+    df_rides['start_coordinates'] = df_rides['start_coordinates'].apply(ast.literal_eval)
     df_rides = df_rides[df_rides['start_coordinates'].apply(lambda x: isinstance(x, list) and len(x) == 2)]
+    
     df_rides[['pickup_lat', 'pickup_lon']] = pd.DataFrame(df_rides['start_coordinates'].tolist(), index=df_rides.index)
     df_rides['pickup_zone'] = df_rides['start_location']
     df_rides['status'] = df_rides['event_type']
@@ -72,51 +77,17 @@ top_zones.columns = ['zone', 'count']
 fig3 = px.bar(top_zones, x='zone', y='count')
 st.plotly_chart(fig3)
 
-# 4. Ride Event Type Distribution
-st.subheader("4. Ride Event Type Distribution")
-fig4 = px.pie(df_rides, names='status')
+# 4. Ride Event Type Distribution & Incomplete Rides
+st.subheader("4. Distribución de Tipos de Evento y Viajes Incompletos")
+
+# Pie chart de tipos de eventos
+fig4 = px.pie(df_rides, names='status', title="Distribución de Tipos de Evento")
 st.plotly_chart(fig4)
 
-# 4.1 Análisis de Cancelaciones y Factores Relacionados
-st.subheader("4.1 Cancelaciones de Uber y Factores Asociados")
-
-# Filtrar viajes con eventos de tipo Cancel
-df_cancel = df_rides[df_rides['status'].str.lower() == 'cancel']
-
-# Total por zona
-cancel_by_zone = df_cancel['pickup_zone'].value_counts().nlargest(10).reset_index()
-cancel_by_zone.columns = ['zone', 'cancel_count']
-
-# Visualización
-fig_cancel = px.bar(cancel_by_zone, x='zone', y='cancel_count', title="Top Zonas con Más Cancelaciones")
-st.plotly_chart(fig_cancel)
-
-# Análisis de precio en cancelaciones (si existe)
-df_cancel['price'] = pd.to_numeric(df_cancel['price'], errors='coerce')
-df_cancel_price = df_cancel[df_cancel['price'] > 4]
-
-st.markdown(f"**Cancelaciones con precio mayor a 4€:** {df_cancel_price.shape[0]} de {df_cancel.shape[0]}")
-
-# Tiempo de llegada del conductor
-df_rides_sorted = df_rides.sort_values(['ride_id', 'timestamp'])
-
-# Calcular tiempo desde 'Request' a 'Driver available'
-ride_times = []
-for ride_id, group in df_rides_sorted.groupby('ride_id'):
-    times = group.set_index('event_type')['timestamp_event']
-    if {'Request', 'Driver available', 'Cancel'}.issubset(times.index):
-        wait_time = (times['Driver available'] - times['Request']).total_seconds() / 60
-        ride_times.append({'ride_id': ride_id, 'wait_time': wait_time})
-
-df_wait = pd.DataFrame(ride_times)
-avg_wait = df_wait['wait_time'].mean()
-st.markdown(f"**Tiempo medio de espera antes de cancelación:** {avg_wait:.2f} minutos")
-
-fig_wait = px.histogram(df_wait, x='wait_time', nbins=20, title="Distribución de Tiempos de Espera antes de Cancelar")
-st.plotly_chart(fig_wait)
-
-
-
+# Viajes incompletos (que no tienen 'Start car ride' ni 'Ride finished')
+incomplete_rides = df_rides.groupby('ride_id')['event_type'].apply(set)
+incomplete = incomplete_rides[incomplete_rides.apply(lambda x: 'Start car ride' not in x and 'Ride finished' not in x)]
+st.markdown(f"**Viajes solicitados pero nunca iniciados:** {len(incomplete)}")
 
 # 5. Simulated Ride Duration by Zone
 st.subheader("5. Simulated Ride Duration per Zone")
@@ -131,6 +102,12 @@ surge_by_zone = df_alerts['zone'].value_counts().reset_index()
 surge_by_zone.columns = ['zone', 'alerts']
 fig6 = px.bar(surge_by_zone, x='zone', y='alerts')
 st.plotly_chart(fig6)
+
+# 6.1 Promedio de Surge Multiplier por Zona
+st.subheader("6.1 Promedio de Surge Multiplier por Zona")
+avg_surge = df_alerts.groupby('zone')['surge_multiplier'].mean().reset_index()
+fig_surge = px.bar(avg_surge, x='zone', y='surge_multiplier')
+st.plotly_chart(fig_surge)
 
 # 7. Ride Count vs. Surge Alerts Correlation
 st.subheader("7. Ride Count vs. Surge Alerts Correlation")
