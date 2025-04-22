@@ -204,40 +204,40 @@ st.plotly_chart(fig2, use_container_width=True)
 
 # --- Sección 4: Distribución de Tipos de Evento y Viajes Incompletos ---
 
-st.subheader("4. Distribución de Tipos de Evento y Viajes Incompletos")
-st.caption("Análisis del flujo de eventos en los viajes y detección de viajes que nunca se iniciaron")
+# --- Sección 4.1: Funnel de eventos por ride ---
 
-# Columna izquierda: gráfico
-col4a, col4b = st.columns([2, 1])
+st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel)")
 
-with col4a:
-    # Pie chart de eventos
-    event_colors = {
-        'Request': '#1f77b4',
-        'Driver available': '#aec7e8',
-        'Start car ride': '#ff4d4d',
-        'Ride finished': '#ff9999'
-    }
+# Contar cuántos rides tienen cada evento
+funnel_steps = ['Request', 'Driver available', 'Start car ride', 'Ride finished']
+funnel_counts = []
 
-    fig4 = px.pie(
-        df_rides,
-        names='status',
-        title="Distribución de Tipos de Evento",
-        color='status',
-        color_discrete_map=event_colors,
-        hole=0.3
-    )
+for step in funnel_steps:
+    count = df_rides[df_rides['event_type'] == step]['ride_id'].nunique()
+    funnel_counts.append({'Etapa': step, 'Cantidad de viajes': count})
 
-    fig4.update_traces(textposition='inside', textinfo='percent+label')
-    st.plotly_chart(fig4, use_container_width=True)
+funnel_df = pd.DataFrame(funnel_counts)
 
-with col4b:
-    # Cálculo de viajes incompletos
-    incomplete_rides = df_rides.groupby('ride_id')['event_type'].apply(set)
-    incomplete = incomplete_rides[incomplete_rides.apply(lambda x: 'Start car ride' not in x and 'Ride finished' not in x)]
+# Gráfico tipo funnel o barras horizontales
+fig_funnel = px.bar(
+    funnel_df,
+    x='Cantidad de viajes',
+    y='Etapa',
+    orientation='h',
+    text='Cantidad de viajes',
+    color='Etapa',
+    color_discrete_map=event_colors
+)
 
-    st.markdown("### 🚫 Viajes Incompletos")
-    st.metric(label="Solicitados pero nunca iniciados", value=len(incomplete))
+fig_funnel.update_traces(textposition='outside')
+fig_funnel.update_layout(
+    yaxis=dict(categoryorder='array', categoryarray=funnel_steps[::-1]),
+    title="Flujo de eventos por viaje (Journey Progression)",
+    showlegend=False
+)
+
+st.plotly_chart(fig_funnel, use_container_width=True)
+
 
 
 
