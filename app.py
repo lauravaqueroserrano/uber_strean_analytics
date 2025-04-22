@@ -10,8 +10,8 @@ st.set_page_config(page_title="Uber Real-Time Dashboard", layout="wide")
 st.title("🚕 Uber Real-Time Analytics Dashboard")
 
 # Load data (you can change these paths as needed)
-ride_path = "ride_events.json"
-traffic_path = "traffic_surge_alerts.json"
+ride_path = "ride_events (5).json"
+traffic_path = "traffic_surge_alerts (1).json"
 
 # Load JSON data
 df_rides = pd.read_json(ride_path)
@@ -20,6 +20,7 @@ df_rides = pd.read_json(ride_path)
 df_rides['timestamp'] = pd.to_datetime(df_rides['timestamp_event'])
 df_rides['pickup_time'] = df_rides['timestamp']
 df_rides['dropoff_time'] = df_rides['pickup_time'] + timedelta(minutes=5)
+df_rides = df_rides[df_rides['start_coordinates'].apply(lambda x: isinstance(x, list) and len(x) == 2)]
 df_rides[['pickup_lat', 'pickup_lon']] = pd.DataFrame(df_rides['start_coordinates'].tolist(), index=df_rides.index)
 df_rides['pickup_zone'] = df_rides['start_location']
 df_rides['status'] = df_rides['event_type']
@@ -90,4 +91,5 @@ st.subheader("8. Hourly Ride Distribution")
 df_rides['hour'] = df_rides['timestamp'].dt.hour
 fig8 = px.histogram(df_rides, x='hour', nbins=24)
 st.plotly_chart(fig8)
+
 
