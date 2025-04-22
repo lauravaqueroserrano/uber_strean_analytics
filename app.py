@@ -327,30 +327,3 @@ st.plotly_chart(fig_bar, use_container_width=True)
 
 
 
-
-
-# 8. Hourly Ride Distribution
-# 8. Distribución Temporal Mejorada (15 min y horas legibles)
-st.subheader("8. Distribución Temporal de Viajes (15 minutos)")
-
-df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
-ride_counts_time = df_rides.groupby('timestamp_15min').size().reset_index(name='count')
-
-fig8 = px.line(
-    ride_counts_time,
-    x='timestamp_15min',
-    y='count',
-    title="Cantidad de viajes por franja de 15 minutos",
-    labels={'timestamp_15min': 'Hora', 'count': 'Número de viajes'}
-)
-fig8.update_layout(
-    xaxis=dict(
-        tickformat="%H:%M",
-        title="Hora del día"
-    ),
-    yaxis_title="Número de viajes"
-)
-
-st.plotly_chart(fig8, use_container_width=True)
-
-
