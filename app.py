@@ -57,6 +57,110 @@ def load_alerts(path):
 df_alerts = load_alerts(traffic_path)
 df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
+
+#previo
+# --- Sección 1: Active Rides Over Time (comparación clara por día con eje X uniforme) ---
+
+# Asegurar que 'weekday' venga del JSON directamente
+df_rides['weekday'] = df_rides['day_of_week']
+df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
+
+# Calcular rango global de tiempo
+x_min = df_rides['timestamp_15min'].min()
+x_max = df_rides['timestamp_15min'].max()
+
+# Título general
+st.subheader("1. Active Rides Over Time")
+
+# Layout: Filtro a la izquierda, gráfico a la derecha
+col1, col2 = st.columns([1, 4], gap="large")
+
+with col1:
+    st.markdown("### Día de la semana")
+    weekday_filter = st.radio(
+        label="",
+        options=['Todos', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        index=0
+    )
+
+with col2:
+    if weekday_filter == 'Todos':
+        # Agrupar por día y hora (15 minutos) para múltiples líneas
+        ride_counts = df_rides.groupby(['weekday', 'timestamp_15min']) \
+                              .size().reset_index(name='ride_count')
+
+        fig1 = px.line(
+            ride_counts,
+            x='timestamp_15min',
+            y='ride_count',
+            color='weekday',
+            title="Active Rides Over Time por Día de la Semana",
+            labels={
+                'timestamp_15min': 'Hora',
+                'ride_count': 'Cantidad de viajes',
+                'weekday': 'Día'
+            },
+            line_shape='spline',
+            color_discrete_map={
+                'Monday': '#1f77b4',
+                'Tuesday': '#ff7f0e',
+                'Wednesday': '#2ca02c',
+                'Thursday': '#d62728',
+                'Friday': '#9467bd',
+                'Saturday': '#8c564b',
+                'Sunday': '#e377c2'
+            }
+        )
+
+        fig1.update_traces(line=dict(width=2))
+        fig1.update_layout(
+            hovermode='x unified',
+            legend_title_text='Día de la semana',
+            xaxis=dict(
+                tickformat='%H:%M',
+                tickangle=0,
+                showgrid=False,
+                range=[x_min, x_max]
+            ),
+            yaxis=dict(showgrid=True)
+        )
+
+        st.plotly_chart(fig1, use_container_width=True)
+
+    else:
+        df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
+
+        if df_rides_filtered.empty:
+            st.warning(f"No hay datos para '{weekday_filter}'.")
+        else:
+            ride_counts = df_rides_filtered.groupby(
+                df_rides_filtered['timestamp_15min']
+            ).size().reset_index(name='ride_count')
+
+            fig1 = px.line(
+                ride_counts,
+                x='timestamp_15min',
+                y='ride_count',
+                title=f"Active Rides Over Time - {weekday_filter}",
+                labels={'timestamp_15min': 'Hora', 'ride_count': 'Cantidad de viajes'},
+                line_shape='spline'
+            )
+
+            fig1.update_traces(line=dict(width=2))
+            fig1.update_layout(
+                hovermode='x unified',
+                xaxis=dict(
+                    tickformat='%H:%M',
+                    showgrid=False,
+                    range=[x_min, x_max]
+                ),
+                yaxis=dict(showgrid=True)
+            )
+
+            st.plotly_chart(fig1, use_container_width=True)
+
+
+
 # 1. Active Rides Over Time
 
 # --- Sección 1: Active Rides Over Time (con multicolores si se elige 'Todos') ---
