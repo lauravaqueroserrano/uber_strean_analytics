@@ -10,7 +10,7 @@ st.title("🚕 Uber Real-Time Analytics Dashboard")
 
 # Load data (you can change these paths as needed)
 ride_path = "ride_events.json"
-traffic_path = "traffic_surge_alerts (1).json"
+traffic_path = "traffic_surge_alerts.json"
 
 # Load JSON data
 df_rides = pd.read_json(ride_path)
