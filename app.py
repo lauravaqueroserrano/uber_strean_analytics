@@ -61,32 +61,37 @@ df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 # --- Sección 1: Active Rides Over Time (línea + filtro a la izquierda con radio) ---
 
-# Asegurar que 'weekday' venga del JSON
+# --- Sección 1: Active Rides Over Time (con botones verticales a la izquierda) ---
+
+# Asegurar que 'weekday' venga del JSON directamente
 df_rides['weekday'] = df_rides['day_of_week']
 
-# Título
+# Título general
 st.subheader("1. Active Rides Over Time")
 
-# Crear dos columnas: izquierda (filtro) y derecha (gráfico)
-col1, col2 = st.columns([1.5, 4])
+# Crear layout en dos columnas: filtro (izquierda), gráfico (derecha)
+col1, col2 = st.columns([1, 4], gap="large")  # menor espacio para el filtro
 
+# --- Filtro en columna izquierda con botones tipo radio ---
 with col1:
+    st.markdown("### Día de la semana")
     weekday_filter = st.radio(
-        "Selecciona el día:",
+        label="",
         options=['Todos', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
         index=0
     )
 
-# Filtrar SOLO para este gráfico
-df_rides_filtered = df_rides.copy()
-if weekday_filter != 'Todos':
-    df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
-
+# --- Gráfico en columna derecha ---
 with col2:
+    # Aplicar filtro solo para esta visualización
+    df_rides_filtered = df_rides.copy()
+    if weekday_filter != 'Todos':
+        df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
+
     if df_rides_filtered.empty:
         st.warning(f"No hay datos para '{weekday_filter}'.")
     else:
-        # Agrupar por intervalos de 15 minutos
+        # Agrupación por intervalos de 15 minutos
         ride_counts = df_rides_filtered.groupby(
             df_rides_filtered['timestamp'].dt.floor('15T')
         ).size().reset_index(name='ride_count')
@@ -100,8 +105,8 @@ with col2:
             labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'}
         )
 
-        # Mostrar gráfico
         st.plotly_chart(fig1, use_container_width=True)
+
 
 
 
