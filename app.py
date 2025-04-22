@@ -168,20 +168,22 @@ with col2:
 # 2. Pickup Heatmap
 # --- Sección 2: Pickup Heatmap con info interactiva al pasar el ratón ---
 
+# --- Sección 2: Pickup Heatmap con puntos más visibles ---
+
 st.subheader("2. Pickup Heatmap")
 st.caption("🖱️ Hover over a point to see the pickup zone and ride count")
 
-# Agrupar por coordenadas + zona para contar rides
+# Agrupar por coordenadas + zona
 pickup_summary = df_rides.groupby(['pickup_lat', 'pickup_lon', 'pickup_zone']) \
                          .size().reset_index(name='count')
 
-# Crear mapa de calor con datos de hover personalizados
+# Crear heatmap con escala más visible
 fig2 = px.density_mapbox(
     pickup_summary,
     lat='pickup_lat',
     lon='pickup_lon',
     z='count',
-    radius=15,
+    radius=12,  # más pequeño para definición
     center=dict(lat=40.4168, lon=-3.7038),
     zoom=11,
     mapbox_style="open-street-map",
@@ -190,10 +192,13 @@ fig2 = px.density_mapbox(
         'count': True,
         'pickup_lat': False,
         'pickup_lon': False
-    }
+    },
+    color_continuous_scale='Hot',  # puedes probar también 'Inferno', 'Viridis', etc.
+    zmax=pickup_summary['count'].max()  # asegurar buen contraste
 )
 
 st.plotly_chart(fig2, use_container_width=True)
+
 
 
 
