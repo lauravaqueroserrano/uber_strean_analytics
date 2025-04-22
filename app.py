@@ -206,9 +206,20 @@ st.plotly_chart(fig2, use_container_width=True)
 
 # --- Sección 4.1: Funnel de eventos por ride ---
 
-st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel)")
+# --- Sección 4.1: Avance de Viajes a través de Eventos (Funnel) ---
 
-# Contar cuántos rides tienen cada evento
+st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel)")
+st.caption("Este gráfico muestra cuántos viajes llegan a cada etapa del proceso de servicio")
+
+# Diccionario de colores
+event_colors = {
+    'Request': '#1f77b4',
+    'Driver available': '#aec7e8',
+    'Start car ride': '#ff4d4d',
+    'Ride finished': '#ff9999'
+}
+
+# Etapas y conteo por ride_id
 funnel_steps = ['Request', 'Driver available', 'Start car ride', 'Ride finished']
 funnel_counts = []
 
@@ -218,7 +229,7 @@ for step in funnel_steps:
 
 funnel_df = pd.DataFrame(funnel_counts)
 
-# Gráfico tipo funnel o barras horizontales
+# Gráfico tipo funnel horizontal
 fig_funnel = px.bar(
     funnel_df,
     x='Cantidad de viajes',
@@ -237,6 +248,7 @@ fig_funnel.update_layout(
 )
 
 st.plotly_chart(fig_funnel, use_container_width=True)
+
 
 
 
