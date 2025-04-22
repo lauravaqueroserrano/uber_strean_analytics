@@ -204,32 +204,30 @@ st.plotly_chart(fig2, use_container_width=True)
 
 # --- Sección 4: Distribución de Tipos de Evento y Viajes Incompletos ---
 
-# --- Sección 4.1: Funnel de eventos por ride ---
+# --- Filtro por hora del día ---
+st.markdown("#### ⏰ Filtrar por hora del día")
+hour_range = st.slider("Selecciona un rango horario", 0, 23, (0, 23))
 
-# --- Sección 4.1: Avance de Viajes a través de Eventos (Funnel) ---
+# Aplicar filtro horario
+df_rides['hour'] = df_rides['timestamp'].dt.hour
+df_filtered = df_rides[(df_rides['hour'] >= hour_range[0]) & (df_rides['hour'] <= hour_range[1])]
+
+# --- Sección 4.1: Funnel actualizado con filtro de hora ---
 
 st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel)")
-st.caption("Este gráfico muestra cuántos viajes llegan a cada etapa del proceso de servicio")
+st.caption(f"Mostrando solo los viajes entre las {hour_range[0]}:00 y {hour_range[1]}:59")
 
-# Diccionario de colores
-event_colors = {
-    'Request': '#1f77b4',
-    'Driver available': '#aec7e8',
-    'Start car ride': '#ff4d4d',
-    'Ride finished': '#ff9999'
-}
-
-# Etapas y conteo por ride_id
+# Etapas
 funnel_steps = ['Request', 'Driver available', 'Start car ride', 'Ride finished']
 funnel_counts = []
 
 for step in funnel_steps:
-    count = df_rides[df_rides['event_type'] == step]['ride_id'].nunique()
+    count = df_filtered[df_filtered['event_type'] == step]['ride_id'].nunique()
     funnel_counts.append({'Etapa': step, 'Cantidad de viajes': count})
 
 funnel_df = pd.DataFrame(funnel_counts)
 
-# Gráfico tipo funnel horizontal
+# Funnel visual
 fig_funnel = px.bar(
     funnel_df,
     x='Cantidad de viajes',
