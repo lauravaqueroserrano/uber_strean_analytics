@@ -330,13 +330,27 @@ st.plotly_chart(fig_bar, use_container_width=True)
 
 
 # 8. Hourly Ride Distribution
-# Histograma puro por minutos
-st.subheader("8. Distribución Temporal de Viajes (modo histograma)")
-df_rides['minute'] = df_rides['timestamp'].dt.hour + df_rides['timestamp'].dt.minute / 60
-fig8_hist = px.histogram(df_rides, x='minute', nbins=60, title="Distribución por Minutos del Día")
-fig8_hist.update_layout(
-    xaxis_title="Hora (decimal)",
+# 8. Distribución Temporal Mejorada (15 min y horas legibles)
+st.subheader("8. Distribución Temporal de Viajes (15 minutos)")
+
+df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
+ride_counts_time = df_rides.groupby('timestamp_15min').size().reset_index(name='count')
+
+fig8 = px.line(
+    ride_counts_time,
+    x='timestamp_15min',
+    y='count',
+    title="Cantidad de viajes por franja de 15 minutos",
+    labels={'timestamp_15min': 'Hora', 'count': 'Número de viajes'}
+)
+fig8.update_layout(
+    xaxis=dict(
+        tickformat="%H:%M",
+        title="Hora del día"
+    ),
     yaxis_title="Número de viajes"
 )
-st.plotly_chart(fig8_hist)
+
+st.plotly_chart(fig8, use_container_width=True)
+
 
