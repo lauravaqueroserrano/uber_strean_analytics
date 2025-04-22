@@ -166,31 +166,33 @@ with col2:
 
 
 # 2. Pickup Heatmap
-# --- Sección 2: Pickup Heatmap con puntos más oscuros y visibles (sin hover_data) ---
+# --- Sección 2: Pickup Intensity Map con hover interactivo ---
 
-st.subheader("2. Pickup Heatmap")
-st.caption("🖱️ Hover over a point to see the pickup zone")
+st.subheader("2. Pickup Heatmap (Interactive)")
+st.caption("🖱️ Hover over a point to see the pickup zone and number of rides")
 
-# Agrupar por coordenadas + zona
+# Agrupar coordenadas + zona con conteo
 pickup_summary = df_rides.groupby(['pickup_lat', 'pickup_lon', 'pickup_zone']) \
                          .size().reset_index(name='count')
 
-# Crear heatmap con escala de colores oscuros y hover_name
-fig2 = px.density_mapbox(
+# Crear scatter map con puntos escalados por count
+fig2 = px.scatter_mapbox(
     pickup_summary,
     lat='pickup_lat',
     lon='pickup_lon',
-    z='count',
-    radius=12,
-    center=dict(lat=40.4168, lon=-3.7038),
+    size='count',
+    color='count',
+    color_continuous_scale='Hot',  # escala de calor
+    size_max=30,
     zoom=11,
-    mapbox_style="open-street-map",
-    hover_name='pickup_zone',  # 👈 esto sí está soportado
-    color_continuous_scale='Hot',
-    zmax=pickup_summary['count'].max()
+    center=dict(lat=40.4168, lon=-3.7038),
+    mapbox_style='open-street-map',
+    hover_name='pickup_zone',
+    hover_data={'count': True, 'pickup_lat': False, 'pickup_lon': False}
 )
 
 st.plotly_chart(fig2, use_container_width=True)
+
 
 
 
