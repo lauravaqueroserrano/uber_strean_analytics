@@ -58,10 +58,29 @@ df_alerts = load_alerts(traffic_path)
 df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 # 1. Active Rides Over Time
+# Añadir columna con el nombre del día de la semana
+df_rides['weekday'] = df_rides['timestamp'].dt.day_name()
+
+# Filtro en la barra lateral
+weekday_filter = st.sidebar.selectbox(
+    "Filtrar por día de la semana",
+    options=['Todos'] + df_rides['weekday'].unique().tolist()
+)
+
+# Aplicar filtro si se elige un día específico
+if weekday_filter != 'Todos':
+    df_rides = df_rides[df_rides['weekday'] == weekday_filter]
+
 st.subheader("1. Active Rides Over Time")
-ride_counts = df_rides.groupby(df_rides['timestamp'].dt.floor('H')).size().reset_index(name='ride_count')
+ride_counts = df_rides.groupby(df_rides['timestamp'].dt.floor('15T')).size().reset_index(name='ride_count')
 fig1 = px.line(ride_counts, x='timestamp', y='ride_count')
 st.plotly_chart(fig1)
+
+
+
+
+
+
 
 # 2. Pickup Heatmap
 st.subheader("2. Pickup Heatmap")
