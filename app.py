@@ -91,8 +91,35 @@ with col2:
             y='ride_count',
             color='weekday',
             title="Active Rides Over Time por Día de la Semana",
-            labels={'timestamp_15min': 'Hora', 'ride_count': 'Cantidad de viajes', 'weekday': 'Día'}
+            labels={
+                'timestamp_15min': 'Hora',
+                'ride_count': 'Cantidad de viajes',
+                'weekday': 'Día'
+            },
+            line_shape='spline',
+            color_discrete_map={
+                'Monday': '#1f77b4',
+                'Tuesday': '#ff7f0e',
+                'Wednesday': '#2ca02c',
+                'Thursday': '#d62728',
+                'Friday': '#9467bd',
+                'Saturday': '#8c564b',
+                'Sunday': '#e377c2'
+            }
         )
+
+        fig1.update_traces(line=dict(width=2))
+        fig1.update_layout(
+            hovermode='x unified',
+            legend_title_text='Día de la semana',
+            xaxis=dict(
+                tickformat='%H:%M',
+                tickangle=0,
+                showgrid=False
+            ),
+            yaxis=dict(showgrid=True)
+        )
+
         st.plotly_chart(fig1, use_container_width=True)
 
     else:
@@ -110,9 +137,22 @@ with col2:
                 x='timestamp',
                 y='ride_count',
                 title=f"Active Rides Over Time - {weekday_filter}",
-                labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'}
+                labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'},
+                line_shape='spline'
             )
+
+            fig1.update_traces(line=dict(width=2))
+            fig1.update_layout(
+                hovermode='x unified',
+                xaxis=dict(
+                    tickformat='%H:%M',
+                    showgrid=False
+                ),
+                yaxis=dict(showgrid=True)
+            )
+
             st.plotly_chart(fig1, use_container_width=True)
+
 
 
 
