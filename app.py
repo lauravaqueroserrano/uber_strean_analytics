@@ -59,37 +59,39 @@ df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 # 1. Active Rides Over Time
 
-# --- Sección: 1. Active Rides Over Time (con filtro por día y scatterplot) ---
+# --- Sección 1: Active Rides Over Time (línea + filtro a la izquierda con radio) ---
 
-# --- Sección: 1. Active Rides Over Time (lineplot con filtro junto al gráfico) ---
-
-# Usar la columna 'day_of_week' directamente
+# Asegurar que 'weekday' venga del JSON
 df_rides['weekday'] = df_rides['day_of_week']
 
-# Crear dos columnas: filtro a la izquierda, gráfico a la derecha
+# Título
 st.subheader("1. Active Rides Over Time")
 
-col1, col2 = st.columns([1, 4])
+# Crear dos columnas: izquierda (filtro) y derecha (gráfico)
+col1, col2 = st.columns([1.5, 4])
 
 with col1:
-    weekday_filter = st.selectbox(
+    weekday_filter = st.radio(
         "Selecciona el día:",
         options=['Todos', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
         index=0
     )
 
-# Aplicar el filtro solo para esta sección
+# Filtrar SOLO para este gráfico
 df_rides_filtered = df_rides.copy()
 if weekday_filter != 'Todos':
     df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
 
-# Mostrar gráfico o mensaje
 with col2:
     if df_rides_filtered.empty:
         st.warning(f"No hay datos para '{weekday_filter}'.")
     else:
-        ride_counts = df_rides_filtered.groupby(df_rides_filtered['timestamp'].dt.floor('15T')) \
-                                       .size().reset_index(name='ride_count')
+        # Agrupar por intervalos de 15 minutos
+        ride_counts = df_rides_filtered.groupby(
+            df_rides_filtered['timestamp'].dt.floor('15T')
+        ).size().reset_index(name='ride_count')
+
+        # Gráfico de línea
         fig1 = px.line(
             ride_counts,
             x='timestamp',
@@ -97,7 +99,10 @@ with col2:
             title="Active Rides Over Time",
             labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'}
         )
+
+        # Mostrar gráfico
         st.plotly_chart(fig1, use_container_width=True)
+
 
 
 
