@@ -59,28 +59,45 @@ df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 # 1. Active Rides Over Time
 
-# Añadir columna con nombre del día (si no existe ya)
-if 'weekday' not in df_rides.columns:
-    df_rides['weekday'] = df_rides['timestamp'].dt.day_name()
+# --- Sección: 1. Active Rides Over Time (con filtro por día y scatterplot) ---
 
-# Filtro lateral: solo usado aquí
+# Asegurar que la columna 'weekday' venga del JSON directamente
+df_rides['weekday'] = df_rides['day_of_week']
+
+# Filtro lateral SOLO para este gráfico
 weekday_filter = st.sidebar.selectbox(
     "Filtrar por día de la semana (solo afecta al gráfico 1)",
-    options=['Todos'] + df_rides['weekday'].unique().tolist()
+    options=['Todos', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 )
 
-# Copia del df filtrado solo para este gráfico
+# Copia filtrada del dataset
 df_rides_filtered = df_rides.copy()
 if weekday_filter != 'Todos':
     df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
 
-# Agrupar por intervalos de 15 minutos
-ride_counts = df_rides_filtered.groupby(df_rides_filtered['timestamp'].dt.floor('15T')).size().reset_index(name='ride_count')
-
-# Scatterplot
+# Título de sección
 st.subheader("1. Active Rides Over Time (Scatter View)")
-fig1 = px.scatter(ride_counts, x='timestamp', y='ride_count', title="Active Rides Over Time")
-st.plotly_chart(fig1)
+
+# Mostrar gráfico o aviso si no hay datos
+if df_rides_filtered.empty:
+    st.warning(f"No hay datos disponibles para '{weekday_filter}'.")
+else:
+    # Agrupar por intervalos de 15 minutos
+    ride_counts = df_rides_filtered.groupby(df_rides_filtered['timestamp'].dt.floor('15T')) \
+                                   .size().reset_index(name='ride_count')
+
+    # Crear scatterplot
+    fig1 = px.scatter(
+        ride_counts,
+        x='timestamp',
+        y='ride_count',
+        title="Active Rides Over Time",
+        labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'}
+    )
+
+    # Mostrar el gráfico
+    st.plotly_chart(fig1)
+
 
 
 
