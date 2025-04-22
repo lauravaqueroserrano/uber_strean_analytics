@@ -201,16 +201,48 @@ st.plotly_chart(fig2, use_container_width=True)
 
 
 # 4. Ride Event Type Distribution & Incomplete Rides
+
+# --- Sección 4: Distribución de Tipos de Evento y Viajes Incompletos ---
+
 st.subheader("4. Distribución de Tipos de Evento y Viajes Incompletos")
+st.caption("Análisis del flujo de eventos en los viajes y detección de viajes que nunca se iniciaron")
 
-# Pie chart de tipos de eventos
-fig4 = px.pie(df_rides, names='status', title="Distribución de Tipos de Evento")
-st.plotly_chart(fig4)
+# Columna izquierda: gráfico
+col4a, col4b = st.columns([2, 1])
 
-# Viajes incompletos (que no tienen 'Start car ride' ni 'Ride finished')
-incomplete_rides = df_rides.groupby('ride_id')['event_type'].apply(set)
-incomplete = incomplete_rides[incomplete_rides.apply(lambda x: 'Start car ride' not in x and 'Ride finished' not in x)]
-st.markdown(f"**Viajes solicitados pero nunca iniciados:** {len(incomplete)}")
+with col4a:
+    # Pie chart de eventos
+    event_colors = {
+        'Request': '#1f77b4',
+        'Driver available': '#aec7e8',
+        'Start car ride': '#ff4d4d',
+        'Ride finished': '#ff9999'
+    }
+
+    fig4 = px.pie(
+        df_rides,
+        names='status',
+        title="Distribución de Tipos de Evento",
+        color='status',
+        color_discrete_map=event_colors,
+        hole=0.3
+    )
+
+    fig4.update_traces(textposition='inside', textinfo='percent+label')
+    st.plotly_chart(fig4, use_container_width=True)
+
+with col4b:
+    # Cálculo de viajes incompletos
+    incomplete_rides = df_rides.groupby('ride_id')['event_type'].apply(set)
+    incomplete = incomplete_rides[incomplete_rides.apply(lambda x: 'Start car ride' not in x and 'Ride finished' not in x)]
+
+    st.markdown("### 🚫 Viajes Incompletos")
+    st.metric(label="Solicitados pero nunca iniciados", value=len(incomplete))
+
+
+
+
+
 
 # 5. Simulated Ride Duration by Zone
 st.subheader("5. Simulated Ride Duration per Zone")
