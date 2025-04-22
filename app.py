@@ -59,20 +59,53 @@ df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 
 #previo
-# --- Sección 1: Active Rides Over Time (comparación clara por día con eje X uniforme) ---
+# --- Sección 0: Total de Rides por Día de la Semana ---
+st.subheader("0. Total de Pedidos por Día de la Semana")
 
-# Asegurar que 'weekday' venga del JSON directamente
 df_rides['weekday'] = df_rides['day_of_week']
-df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
+days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+rides_by_day = df_rides['weekday'].value_counts().reindex(days_order).reset_index()
+rides_by_day.columns = ['weekday', 'ride_count']
 
-# Calcular rango global de tiempo
+fig0 = px.bar(
+    rides_by_day,
+    x='ride_count',
+    y='weekday',
+    orientation='h',
+    color='weekday',
+    color_discrete_map={
+        'Monday': '#1f77b4',
+        'Tuesday': '#ff7f0e',
+        'Wednesday': '#2ca02c',
+        'Thursday': '#d62728',
+        'Friday': '#9467bd',
+        'Saturday': '#8c564b',
+        'Sunday': '#e377c2'
+    },
+    title="Cantidad Total de Rides por Día de la Semana",
+    labels={'ride_count': 'Cantidad de viajes', 'weekday': 'Día'}
+)
+
+fig0.update_layout(
+    showlegend=False,
+    yaxis=dict(categoryorder='array', categoryarray=days_order)
+)
+
+st.plotly_chart(fig0, use_container_width=True)
+
+
+
+
+# 1. Active Rides Over Time
+
+# --- Sección 1: Active Rides Over Time (con multicolores si se elige 'Todos') ---
+# --- Sección 1: Active Rides Over Time (con eje X uniforme y sin duplicados) ---
+
+df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
 x_min = df_rides['timestamp_15min'].min()
 x_max = df_rides['timestamp_15min'].max()
 
-# Título general
 st.subheader("1. Active Rides Over Time")
-
-# Layout: Filtro a la izquierda, gráfico a la derecha
 col1, col2 = st.columns([1, 4], gap="large")
 
 with col1:
@@ -85,7 +118,6 @@ with col1:
 
 with col2:
     if weekday_filter == 'Todos':
-        # Agrupar por día y hora (15 minutos) para múltiples líneas
         ride_counts = df_rides.groupby(['weekday', 'timestamp_15min']) \
                               .size().reset_index(name='ride_count')
 
@@ -159,103 +191,6 @@ with col2:
 
             st.plotly_chart(fig1, use_container_width=True)
 
-
-
-# 1. Active Rides Over Time
-
-# --- Sección 1: Active Rides Over Time (con multicolores si se elige 'Todos') ---
-
-# Asegurar que 'weekday' venga del JSON directamente
-df_rides['weekday'] = df_rides['day_of_week']
-
-# Título general
-st.subheader("1. Active Rides Over Time")
-
-# Layout: Filtro a la izquierda, gráfico a la derecha
-col1, col2 = st.columns([1, 4], gap="large")
-
-with col1:
-    st.markdown("### Día de la semana")
-    weekday_filter = st.radio(
-        label="",
-        options=['Todos', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        index=0
-    )
-
-with col2:
-    if weekday_filter == 'Todos':
-        # Agrupar por día y hora (15 minutos) para múltiples líneas
-        df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
-        ride_counts = df_rides.groupby(['weekday', 'timestamp_15min']) \
-                              .size().reset_index(name='ride_count')
-
-        fig1 = px.line(
-            ride_counts,
-            x='timestamp_15min',
-            y='ride_count',
-            color='weekday',
-            title="Active Rides Over Time por Día de la Semana",
-            labels={
-                'timestamp_15min': 'Hora',
-                'ride_count': 'Cantidad de viajes',
-                'weekday': 'Día'
-            },
-            line_shape='spline',
-            color_discrete_map={
-                'Monday': '#1f77b4',
-                'Tuesday': '#ff7f0e',
-                'Wednesday': '#2ca02c',
-                'Thursday': '#d62728',
-                'Friday': '#9467bd',
-                'Saturday': '#8c564b',
-                'Sunday': '#e377c2'
-            }
-        )
-
-        fig1.update_traces(line=dict(width=2))
-        fig1.update_layout(
-            hovermode='x unified',
-            legend_title_text='Día de la semana',
-            xaxis=dict(
-                tickformat='%H:%M',
-                tickangle=0,
-                showgrid=False
-            ),
-            yaxis=dict(showgrid=True)
-        )
-
-        st.plotly_chart(fig1, use_container_width=True)
-
-    else:
-        df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
-
-        if df_rides_filtered.empty:
-            st.warning(f"No hay datos para '{weekday_filter}'.")
-        else:
-            ride_counts = df_rides_filtered.groupby(
-                df_rides_filtered['timestamp'].dt.floor('15T')
-            ).size().reset_index(name='ride_count')
-
-            fig1 = px.line(
-                ride_counts,
-                x='timestamp',
-                y='ride_count',
-                title=f"Active Rides Over Time - {weekday_filter}",
-                labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'},
-                line_shape='spline'
-            )
-
-            fig1.update_traces(line=dict(width=2))
-            fig1.update_layout(
-                hovermode='x unified',
-                xaxis=dict(
-                    tickformat='%H:%M',
-                    showgrid=False
-                ),
-                yaxis=dict(showgrid=True)
-            )
-
-            st.plotly_chart(fig1, use_container_width=True)
 
 
 
