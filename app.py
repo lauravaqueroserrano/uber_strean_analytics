@@ -10,8 +10,8 @@ st.set_page_config(page_title="Uber Real-Time Dashboard", layout="wide")
 st.title("🚕 Uber Real-Time Analytics Dashboard")
 
 # Load data (you can change these paths as needed)
-ride_path = "ride_events (5).json"
-traffic_path = "traffic_surge_alerts (1).json"
+ride_path = "ride_events.json"
+traffic_path = "traffic_surge_alerts.json"
 
 # Load JSON data
 df_rides = pd.read_json(ride_path)
