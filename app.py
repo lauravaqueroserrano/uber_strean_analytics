@@ -320,6 +320,133 @@ fig7.update_layout(
 st.plotly_chart(fig7, use_container_width=True)
 
 
+#pruebaaaaa cual es mejor
+
+# 7. Ride Count vs. Surge Alerts Correlation - Mejorado con barras agrupadas
+st.subheader("7. Ride & Traffic Alerts per Zone")
+st.caption("Comparación directa de viajes y alertas en cada zona de recogida.")
+
+# Agrupación
+rides_per_zone = df_rides.groupby('pickup_zone').size().reset_index(name='Rides')
+alerts_per_zone = df_alerts.groupby('zone').size().reset_index(name='Alerts')
+
+# Merge
+merged = rides_per_zone.merge(alerts_per_zone, left_on='pickup_zone', right_on='zone')
+
+# Formato largo para px.bar con barras agrupadas
+df_melted = merged.melt(id_vars='pickup_zone', value_vars=['Rides', 'Alerts'],
+                        var_name='Tipo', value_name='Cantidad')
+
+# Plot
+fig_bar = px.bar(
+    df_melted,
+    x='pickup_zone',
+    y='Cantidad',
+    color='Tipo',
+    barmode='group',
+    text='Cantidad',
+    title="Comparación de Viajes y Alertas por Zona"
+)
+
+fig_bar.update_layout(
+    xaxis_title="Zona",
+    yaxis_title="Cantidad",
+    title_x=0.3,
+    xaxis_tickangle=-45,
+    height=500
+)
+
+st.plotly_chart(fig_bar, use_container_width=True)
+
+
+
+#o esteeee
+# --- Gráfico de barras agrupadas + ratio ---
+st.subheader("7.1 Comparación de Viajes y Alertas por Zona")
+st.caption("Análisis conjunto del volumen de viajes y alertas, además del ratio de alertas por viaje.")
+
+# Agrupaciones base
+rides_per_zone = df_rides.groupby('pickup_zone').size().reset_index(name='Rides')
+alerts_per_zone = df_alerts.groupby('zone').size().reset_index(name='Alerts')
+
+# Merge y cálculo del ratio
+merged = rides_per_zone.merge(alerts_per_zone, left_on='pickup_zone', right_on='zone')
+merged['Alert_Ride_Ratio'] = merged['Alerts'] / merged['Rides']
+
+# Formato largo
+df_melted = merged.melt(
+    id_vars=['pickup_zone', 'Alert_Ride_Ratio'],
+    value_vars=['Rides', 'Alerts'],
+    var_name='Tipo',
+    value_name='Cantidad'
+)
+
+# Gráfico de barras agrupadas
+fig_grouped = px.bar(
+    df_melted,
+    x='pickup_zone',
+    y='Cantidad',
+    color='Tipo',
+    barmode='group',
+    text='Cantidad',
+    title="Viajes vs. Alertas por Zona"
+)
+fig_grouped.update_layout(
+    xaxis_title="Zona",
+    yaxis_title="Cantidad",
+    xaxis_tickangle=-45,
+    height=500
+)
+st.plotly_chart(fig_grouped, use_container_width=True)
+
+# Mostrar zonas con ratio alto
+st.markdown("#### 🔍 Zonas con mayor ratio de alertas por viaje")
+top_ratios = merged.sort_values(by='Alert_Ride_Ratio', ascending=False)[['pickup_zone', 'Rides', 'Alerts', 'Alert_Ride_Ratio']]
+st.dataframe(top_ratios.round(2).rename(columns={
+    'pickup_zone': 'Zona',
+    'Rides': 'Viajes',
+    'Alerts': 'Alertas',
+    'Alert_Ride_Ratio': 'Ratio Alertas/Viaje'
+}))
+
+
+
+
+#o finalmente este
+# --- Heatmap de viajes y alertas por zona ---
+st.subheader("7.2 Heatmap: Viajes y Alertas por Zona")
+st.caption("Visualización intensiva por zona para detectar concentración de eventos.")
+
+# Preparar para heatmap
+heatmap_df = merged[['pickup_zone', 'Rides', 'Alerts']].set_index('pickup_zone')
+
+# Crear heatmap con plotly
+import plotly.figure_factory as ff
+
+heatmap_data = heatmap_df.T  # Transponer para que zonas estén en columnas
+
+fig_heat = ff.create_annotated_heatmap(
+    z=heatmap_data.values,
+    x=heatmap_data.columns.tolist(),
+    y=heatmap_data.index.tolist(),
+    colorscale='Blues',
+    showscale=True,
+    annotation_text=heatmap_data.values.round(0).astype(str)
+)
+
+fig_heat.update_layout(
+    title="Heatmap de Rides y Alertas por Zona",
+    xaxis_title="Zona",
+    yaxis_title="Tipo",
+    height=500
+)
+
+st.plotly_chart(fig_heat, use_container_width=True)
+
+
+
+
+
 # 8. Hourly Ride Distribution
 st.subheader("8. Hourly Ride Distribution")
 df_rides['hour'] = df_rides['timestamp'].dt.hour
