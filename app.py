@@ -166,18 +166,38 @@ with col2:
 
 
 # 2. Pickup Heatmap
-st.subheader("2. Pickup Heatmap")
-fig2 = px.density_mapbox(df_rides, lat='pickup_lat', lon='pickup_lon', radius=10,
-                         center=dict(lat=40.4168, lon=-3.7038), zoom=11,
-                         mapbox_style="open-street-map")
-st.plotly_chart(fig2)
+# --- Sección 2: Pickup Heatmap con info interactiva al pasar el ratón ---
 
-# 3. Top 10 Pickup Zones
-st.subheader("3. Top 10 Pickup Zones")
-top_zones = df_rides['pickup_zone'].value_counts().nlargest(10).reset_index()
-top_zones.columns = ['zone', 'count']
-fig3 = px.bar(top_zones, x='zone', y='count')
-st.plotly_chart(fig3)
+st.subheader("2. Pickup Heatmap")
+st.caption("🖱️ Hover over a point to see the pickup zone and ride count")
+
+# Agrupar por coordenadas + zona para contar rides
+pickup_summary = df_rides.groupby(['pickup_lat', 'pickup_lon', 'pickup_zone']) \
+                         .size().reset_index(name='count')
+
+# Crear mapa de calor con datos de hover personalizados
+fig2 = px.density_mapbox(
+    pickup_summary,
+    lat='pickup_lat',
+    lon='pickup_lon',
+    z='count',
+    radius=15,
+    center=dict(lat=40.4168, lon=-3.7038),
+    zoom=11,
+    mapbox_style="open-street-map",
+    hover_data={
+        'pickup_zone': True,
+        'count': True,
+        'pickup_lat': False,
+        'pickup_lon': False
+    }
+)
+
+st.plotly_chart(fig2, use_container_width=True)
+
+
+
+
 
 # 4. Ride Event Type Distribution & Incomplete Rides
 st.subheader("4. Distribución de Tipos de Evento y Viajes Incompletos")
