@@ -58,23 +58,30 @@ df_alerts = load_alerts(traffic_path)
 df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 # 1. Active Rides Over Time
-# Añadir columna con el nombre del día de la semana
-df_rides['weekday'] = df_rides['timestamp'].dt.day_name()
 
-# Filtro en la barra lateral
+# Añadir columna con nombre del día (si no existe ya)
+if 'weekday' not in df_rides.columns:
+    df_rides['weekday'] = df_rides['timestamp'].dt.day_name()
+
+# Filtro lateral: solo usado aquí
 weekday_filter = st.sidebar.selectbox(
-    "Filtrar por día de la semana",
+    "Filtrar por día de la semana (solo afecta al gráfico 1)",
     options=['Todos'] + df_rides['weekday'].unique().tolist()
 )
 
-# Aplicar filtro si se elige un día específico
+# Copia del df filtrado solo para este gráfico
+df_rides_filtered = df_rides.copy()
 if weekday_filter != 'Todos':
-    df_rides = df_rides[df_rides['weekday'] == weekday_filter]
+    df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
 
-st.subheader("1. Active Rides Over Time")
-ride_counts = df_rides.groupby(df_rides['timestamp'].dt.floor('15T')).size().reset_index(name='ride_count')
-fig1 = px.line(ride_counts, x='timestamp', y='ride_count')
+# Agrupar por intervalos de 15 minutos
+ride_counts = df_rides_filtered.groupby(df_rides_filtered['timestamp'].dt.floor('15T')).size().reset_index(name='ride_count')
+
+# Scatterplot
+st.subheader("1. Active Rides Over Time (Scatter View)")
+fig1 = px.scatter(ride_counts, x='timestamp', y='ride_count', title="Active Rides Over Time")
 st.plotly_chart(fig1)
+
 
 
 
