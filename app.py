@@ -277,13 +277,48 @@ avg_surge = df_alerts.groupby('zone')['surge_multiplier'].mean().reset_index()
 fig_surge = px.bar(avg_surge, x='zone', y='surge_multiplier')
 st.plotly_chart(fig_surge)
 
+
+
+
+
 # 7. Ride Count vs. Surge Alerts Correlation
+
+# 7. Ride Count vs. Surge Alerts Correlation (Mejorado)
 st.subheader("7. Ride Count vs. Surge Alerts Correlation")
-merged = df_rides.groupby('pickup_zone').size().reset_index(name='rides') \
-    .merge(df_alerts.groupby('zone').size().reset_index(name='alerts'),
-           left_on='pickup_zone', right_on='zone')
-fig7 = px.scatter(merged, x='rides', y='alerts', text='pickup_zone')
-st.plotly_chart(fig7)
+st.caption("Este gráfico muestra la relación entre la cantidad de viajes y alertas de tráfico por zona.")
+
+# Agrupaciones
+rides_per_zone = df_rides.groupby('pickup_zone').size().reset_index(name='rides')
+alerts_per_zone = df_alerts.groupby('zone').size().reset_index(name='alerts')
+
+# Merge
+merged = rides_per_zone.merge(alerts_per_zone, left_on='pickup_zone', right_on='zone')
+
+# Gráfico mejorado
+fig7 = px.scatter(
+    merged,
+    x='rides',
+    y='alerts',
+    size='rides',
+    color='alerts',
+    hover_name='pickup_zone',
+    hover_data={'rides': True, 'alerts': True, 'pickup_zone': False},
+    text='pickup_zone',
+    color_continuous_scale='Blues',
+    title="Relación entre Viajes y Alertas de Tráfico por Zona"
+)
+
+fig7.update_traces(marker=dict(opacity=0.7, line=dict(width=1, color='DarkSlateGrey')))
+fig7.update_layout(
+    xaxis_title="Cantidad de viajes",
+    yaxis_title="Cantidad de alertas",
+    title_x=0.3,
+    height=600,
+    showlegend=False
+)
+
+st.plotly_chart(fig7, use_container_width=True)
+
 
 # 8. Hourly Ride Distribution
 st.subheader("8. Hourly Ride Distribution")
