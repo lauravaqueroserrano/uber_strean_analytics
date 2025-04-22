@@ -77,6 +77,47 @@ st.subheader("4. Ride Event Type Distribution")
 fig4 = px.pie(df_rides, names='status')
 st.plotly_chart(fig4)
 
+# 4.1 Análisis de Cancelaciones y Factores Relacionados
+st.subheader("4.1 Cancelaciones de Uber y Factores Asociados")
+
+# Filtrar viajes con eventos de tipo Cancel
+df_cancel = df_rides[df_rides['status'].str.lower() == 'cancel']
+
+# Total por zona
+cancel_by_zone = df_cancel['pickup_zone'].value_counts().nlargest(10).reset_index()
+cancel_by_zone.columns = ['zone', 'cancel_count']
+
+# Visualización
+fig_cancel = px.bar(cancel_by_zone, x='zone', y='cancel_count', title="Top Zonas con Más Cancelaciones")
+st.plotly_chart(fig_cancel)
+
+# Análisis de precio en cancelaciones (si existe)
+df_cancel['price'] = pd.to_numeric(df_cancel['price'], errors='coerce')
+df_cancel_price = df_cancel[df_cancel['price'] > 4]
+
+st.markdown(f"**Cancelaciones con precio mayor a 4€:** {df_cancel_price.shape[0]} de {df_cancel.shape[0]}")
+
+# Tiempo de llegada del conductor
+df_rides_sorted = df_rides.sort_values(['ride_id', 'timestamp'])
+
+# Calcular tiempo desde 'Request' a 'Driver available'
+ride_times = []
+for ride_id, group in df_rides_sorted.groupby('ride_id'):
+    times = group.set_index('event_type')['timestamp_event']
+    if {'Request', 'Driver available', 'Cancel'}.issubset(times.index):
+        wait_time = (times['Driver available'] - times['Request']).total_seconds() / 60
+        ride_times.append({'ride_id': ride_id, 'wait_time': wait_time})
+
+df_wait = pd.DataFrame(ride_times)
+avg_wait = df_wait['wait_time'].mean()
+st.markdown(f"**Tiempo medio de espera antes de cancelación:** {avg_wait:.2f} minutos")
+
+fig_wait = px.histogram(df_wait, x='wait_time', nbins=20, title="Distribución de Tiempos de Espera antes de Cancelar")
+st.plotly_chart(fig_wait)
+
+
+
+
 # 5. Simulated Ride Duration by Zone
 st.subheader("5. Simulated Ride Duration per Zone")
 df_rides['duration_min'] = (df_rides['dropoff_time'] - df_rides['pickup_time']).dt.total_seconds() / 60
