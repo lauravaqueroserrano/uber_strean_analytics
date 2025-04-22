@@ -202,32 +202,43 @@ st.plotly_chart(fig2, use_container_width=True)
 
 # 4. Ride Event Type Distribution & Incomplete Rides
 
-# --- Sección 4: Distribución de Tipos de Evento y Viajes Incompletos ---
+# --- Sección 4.1: Funnel de eventos con filtro por hora del día ---
 
-# --- Filtro por hora del día ---
+# Diccionario de colores (si aún no lo tienes en tu script)
+event_colors = {
+    'Request': '#1f77b4',
+    'Driver available': '#aec7e8',
+    'Start car ride': '#ff4d4d',
+    'Ride finished': '#ff9999'
+}
+
+# Título de sección
+st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel)")
+st.caption("Este gráfico muestra cuántos viajes llegan a cada etapa del proceso de servicio")
+
+# Filtro por hora
 st.markdown("#### ⏰ Filtrar por hora del día")
 hour_range = st.slider("Selecciona un rango horario", 0, 23, (0, 23))
 
-# Aplicar filtro horario
+# Asegurarse de que exista la columna 'hour'
 df_rides['hour'] = df_rides['timestamp'].dt.hour
+
+# Filtrar el DataFrame por el rango horario seleccionado
 df_filtered = df_rides[(df_rides['hour'] >= hour_range[0]) & (df_rides['hour'] <= hour_range[1])]
 
-# --- Sección 4.1: Funnel actualizado con filtro de hora ---
-
-st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel)")
-st.caption(f"Mostrando solo los viajes entre las {hour_range[0]}:00 y {hour_range[1]}:59")
-
-# Etapas
+# Definir las etapas del funnel
 funnel_steps = ['Request', 'Driver available', 'Start car ride', 'Ride finished']
 funnel_counts = []
 
+# Contar rides únicos que han pasado por cada etapa en el rango de horas
 for step in funnel_steps:
     count = df_filtered[df_filtered['event_type'] == step]['ride_id'].nunique()
     funnel_counts.append({'Etapa': step, 'Cantidad de viajes': count})
 
+# Crear DataFrame para el gráfico
 funnel_df = pd.DataFrame(funnel_counts)
 
-# Funnel visual
+# Crear gráfico de barras horizontales tipo funnel
 fig_funnel = px.bar(
     funnel_df,
     x='Cantidad de viajes',
@@ -241,11 +252,13 @@ fig_funnel = px.bar(
 fig_funnel.update_traces(textposition='outside')
 fig_funnel.update_layout(
     yaxis=dict(categoryorder='array', categoryarray=funnel_steps[::-1]),
-    title="Flujo de eventos por viaje (Journey Progression)",
+    title=f"Flujo de eventos por viaje entre las {hour_range[0]}:00 y {hour_range[1]}:59",
     showlegend=False
 )
 
+# Mostrar gráfico
 st.plotly_chart(fig_funnel, use_container_width=True)
+
 
 
 
