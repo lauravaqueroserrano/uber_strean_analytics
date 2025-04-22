@@ -200,7 +200,7 @@ st.plotly_chart(fig2, use_container_width=True)
 
 
 
-# 4. Ride Event Type Distribution & Incomplete Rides
+# 4. Ride Event Type Distribution & Incomplete Rides- RETOCAR, NO MIRAR
 
 # --- Sección 4.1: Funnel de eventos con filtro por hora del día ---
 
@@ -213,7 +213,7 @@ event_colors = {
 }
 
 # Título de sección
-st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel)")
+st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel): RETOCAR, NO MIRAR")
 st.caption("Este gráfico muestra cuántos viajes llegan a cada etapa del proceso de servicio")
 
 # Filtro por hora
@@ -263,16 +263,6 @@ st.plotly_chart(fig_funnel, use_container_width=True)
 
 
 
-
-
-
-
-# 5. Simulated Ride Duration by Zone
-st.subheader("5. Simulated Ride Duration per Zone")
-df_rides['duration_min'] = (df_rides['dropoff_time'] - df_rides['pickup_time']).dt.total_seconds() / 60
-avg_duration = df_rides.groupby('pickup_zone')['duration_min'].mean().nlargest(10).reset_index()
-fig5 = px.bar(avg_duration, x='pickup_zone', y='duration_min')
-st.plotly_chart(fig5)
 
 # 6. Live Traffic Surge Alerts by Zone
 st.subheader("6. Live Traffic Surge Alerts by Zone")
