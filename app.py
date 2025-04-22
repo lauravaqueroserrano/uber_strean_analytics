@@ -61,42 +61,44 @@ df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 # --- Sección: 1. Active Rides Over Time (con filtro por día y scatterplot) ---
 
-# Asegurar que la columna 'weekday' venga del JSON directamente
+# --- Sección: 1. Active Rides Over Time (lineplot con filtro junto al gráfico) ---
+
+# Usar la columna 'day_of_week' directamente
 df_rides['weekday'] = df_rides['day_of_week']
 
-# Filtro lateral SOLO para este gráfico
-weekday_filter = st.sidebar.selectbox(
-    "Filtrar por día de la semana (solo afecta al gráfico 1)",
-    options=['Todos', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-)
+# Crear dos columnas: filtro a la izquierda, gráfico a la derecha
+st.subheader("1. Active Rides Over Time")
 
-# Copia filtrada del dataset
+col1, col2 = st.columns([1, 4])
+
+with col1:
+    weekday_filter = st.selectbox(
+        "Selecciona el día:",
+        options=['Todos', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        index=0
+    )
+
+# Aplicar el filtro solo para esta sección
 df_rides_filtered = df_rides.copy()
 if weekday_filter != 'Todos':
     df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
 
-# Título de sección
-st.subheader("1. Active Rides Over Time (Scatter View)")
+# Mostrar gráfico o mensaje
+with col2:
+    if df_rides_filtered.empty:
+        st.warning(f"No hay datos para '{weekday_filter}'.")
+    else:
+        ride_counts = df_rides_filtered.groupby(df_rides_filtered['timestamp'].dt.floor('15T')) \
+                                       .size().reset_index(name='ride_count')
+        fig1 = px.line(
+            ride_counts,
+            x='timestamp',
+            y='ride_count',
+            title="Active Rides Over Time",
+            labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'}
+        )
+        st.plotly_chart(fig1, use_container_width=True)
 
-# Mostrar gráfico o aviso si no hay datos
-if df_rides_filtered.empty:
-    st.warning(f"No hay datos disponibles para '{weekday_filter}'.")
-else:
-    # Agrupar por intervalos de 15 minutos
-    ride_counts = df_rides_filtered.groupby(df_rides_filtered['timestamp'].dt.floor('15T')) \
-                                   .size().reset_index(name='ride_count')
-
-    # Crear scatterplot
-    fig1 = px.scatter(
-        ride_counts,
-        x='timestamp',
-        y='ride_count',
-        title="Active Rides Over Time",
-        labels={'timestamp': 'Hora', 'ride_count': 'Cantidad de viajes'}
-    )
-
-    # Mostrar el gráfico
-    st.plotly_chart(fig1)
 
 
 
