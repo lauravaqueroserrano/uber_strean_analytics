@@ -405,46 +405,78 @@ st.plotly_chart(fig11, use_container_width=True)
 
 
 # --- Sección 12: Detección de Anomalías: Z-Score en Request ---
-st.subheader("12. Detección de Picos Anómalos de Solicitudes")
+st.subheader("12. Picos Anómalos de Solicitudes por Zona")
+
 requests = df_rides[df_rides["event_type"] == "Request"].copy()
 requests["hour"] = requests["timestamp"].dt.floor("H")
 zone_hourly = requests.groupby(["start_location", "hour"]).size().reset_index(name="request_count")
 zone_hourly["zscore"] = zone_hourly.groupby("start_location")["request_count"].transform(zscore)
 anomalies = zone_hourly[zone_hourly["zscore"] > 3]
 
-st.dataframe(anomalies.sort_values("zscore", ascending=False).head(10))
+fig12 = px.scatter(
+    anomalies, x="hour", y="request_count", color="start_location", size="zscore",
+    hover_data=["zscore"],
+    title="Zonas con Solicitudes Anómalas (Z-score > 3)"
+)
+st.plotly_chart(fig12, use_container_width=True)
+
 
 
 # --- Sección 13: Tiempos de Espera Largos ---
-st.subheader("13. Tiempos de Espera Anormalmente Largos")
+st.subheader("13. Tiempos de Espera Largos entre Request y Driver Available")
+
 sessions = df_rides.pivot_table(index="ride_id", columns="event_type", values="timestamp", aggfunc="first")
 sessions["response_time"] = (sessions["Driver available"] - sessions["Request"]).dt.total_seconds() / 60
+sessions = sessions.dropna(subset=["response_time"])
 threshold = sessions["response_time"].quantile(0.99)
-outliers = sessions[sessions["response_time"] > threshold]
-st.dataframe(outliers[["response_time"]].sort_values("response_time", ascending=False).head(10))
+outliers = sessions[sessions["response_time"] > threshold].reset_index()
+
+fig13 = px.bar(outliers.sort_values("response_time", ascending=False).head(15),
+               x="ride_id", y="response_time",
+               title="Top 15 Viajes con Mayor Tiempo de Espera",
+               labels={"response_time": "Tiempo de espera (min)"})
+st.plotly_chart(fig13, use_container_width=True)
+
 
 
 # --- Sección 14: Viajes Incompletos (Inicio pero sin Final) ---
 st.subheader("14. Viajes Iniciados pero No Finalizados")
+
 started = set(df_rides[df_rides["event_type"] == "Start car ride"]["ride_id"])
 finished = set(df_rides[df_rides["event_type"] == "Ride finished"]["ride_id"])
 incomplete = list(started - finished)
-st.write(f"Cantidad de viajes iniciados pero no finalizados: {len(incomplete)}")
+
+st.metric("Cantidad de viajes iniciados pero no finalizados", len(incomplete))
+
+if incomplete:
+    st.dataframe(pd.DataFrame(incomplete, columns=["ride_id"]))
+
 
 
 # --- Sección 15: Solicitudes Frecuentes por Mismo Ride ID ---
-st.subheader("15. Solicitudes Repetidas por Ride ID")
+st.subheader("15. Solicitudes Repetidas por Ride ID en el mismo minuto")
+
 df_rides["minute"] = df_rides["timestamp"].dt.floor("T")
 frequent_requests = df_rides[df_rides["event_type"] == "Request"] \
     .groupby(["ride_id", "minute"]).size().reset_index(name="request_count")
 spam_rides = frequent_requests[frequent_requests["request_count"] > 1]
-st.dataframe(spam_rides.head(10))
+
+fig15 = px.histogram(spam_rides, x="request_count", nbins=10,
+                     title="Distribución de Solicitudes Repetidas")
+st.plotly_chart(fig15, use_container_width=True)
+st.dataframe(spam_rides)
+
 
 
 # --- Sección 16: Rutas Repetidas Sospechosas ---
-st.subheader("16. Detección de Rutas Repetidas Sospechosas")
+st.subheader("16. Rutas Sospechosas (Repetidas más de 50 veces)")
+
 route_patterns = df_rides.groupby(["start_location", "end_location"]).size().reset_index(name="count")
-templates = route_patterns[route_patterns["count"] > 50]
-st.dataframe(templates.sort_values("count", ascending=False).head(10))
+templates = route_patterns[route_patterns["count"] > 50].sort_values("count", ascending=False)
+
+fig16 = px.bar(templates, x="count", y="start_location", color="end_location",
+               orientation="h", title="Rutas Repetidas Sospechosamente")
+st.plotly_chart(fig16, use_container_width=True)
+
 
 
