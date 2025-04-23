@@ -452,16 +452,23 @@ else:
 
 
 # --- Sección 14: Viajes Incompletos (Inicio pero sin Final) ---
+# --- Sección 14: Viajes Incompletos (Inicio pero sin Final) ---
 st.subheader("14. Viajes Iniciados pero No Finalizados")
 
-started = set(df_rides[df_rides["event_type"] == "Start car ride"]["ride_id"])
-finished = set(df_rides[df_rides["event_type"] == "Ride finished"]["ride_id"])
-incomplete = list(started - finished)
+started_df = df_rides[df_rides["event_type"] == "Start car ride"]
+finished_df = df_rides[df_rides["event_type"] == "Ride finished"]
 
-st.metric("Cantidad de viajes iniciados pero no finalizados", len(incomplete))
+started_ids = set(started_df["ride_id"])
+finished_ids = set(finished_df["ride_id"])
+incomplete_ids = list(started_ids - finished_ids)
 
-if incomplete:
-    st.dataframe(pd.DataFrame(incomplete, columns=["ride_id"]))
+st.metric("Cantidad de viajes iniciados pero no finalizados", len(incomplete_ids))
+
+# Show details if any exist
+if incomplete_ids:
+    incomplete_details = started_df[started_df["ride_id"].isin(incomplete_ids)]
+    st.dataframe(incomplete_details)
+
 
 
 
