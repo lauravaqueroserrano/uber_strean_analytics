@@ -14,15 +14,19 @@ st.set_page_config(page_title="Uber Real-Time Dashboard", layout="wide")
 st.title("🚕 Uber Real-Time Analytics Dashboard")
 
 # Load data
-ride_csv_path = "/tmp/streaming_rides.csv"
-if not os.path.exists(ride_csv_path):
-    st.error("Waiting for streaming data to arrive...")
+ride_path = "ride_events.json"
+traffic_path = "traffic_surge_alerts.json"
+
+# Check if files exist
+if not os.path.exists(ride_path):
+    st.error(f"Ride events file not found: {ride_path}")
+    st.stop()
+if not os.path.exists(traffic_path):
+    st.error(f"Traffic alerts file not found: {traffic_path}")
     st.stop()
 
-df_rides = pd.read_csv(ride_csv_path)
-
-
-
+# Load JSON data
+df_rides = pd.read_json(ride_path)
 
 # Transform ride data
 if 'timestamp_event' in df_rides.columns:
@@ -54,6 +58,8 @@ def load_alerts(path):
 
 df_alerts = load_alerts(traffic_path)
 df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
+
+
 
 
 
