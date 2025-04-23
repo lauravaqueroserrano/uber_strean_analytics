@@ -1,0 +1,37 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import from_json, col
+from pyspark.sql.types import StructType, StringType, TimestampType
+
+def start_spark():
+    return SparkSession.builder.appName("UberStream").getOrCreate()
+
+def get_schema():
+    return StructType() \
+        .add("ride_id", StringType()) \
+        .add("event_type", StringType()) \
+        .add("timestamp_event", TimestampType()) \
+        .add("start_location", StringType()) \
+        .add("end_location", StringType()) \
+        .add("start_coordinates", StringType()) \
+        .add("day_of_week", StringType())
+
+def run_streaming_job(connection_string, eventhub_name, output_path="/tmp/streaming_rides.csv"):
+    spark = start_spark()
+    schema = get_schema()
+
+    connection = {
+        "eventhubs.connection.string": f"{connection_string};EntityPath={eventhub_name}"
+    }
+
+    stream_df = spark.readStream.format("eventhubs").options(**connection).load()
+    parsed = stream_df.selectExpr("CAST(body AS STRING) as json") \
+        .select(from_json(col("json"), schema).alias("data")).select("data.*")
+
+    query = parsed.writeStream \
+        .format("csv") \
+        .option("checkpointLocation", "/tmp/checkpoint_rides") \
+        .option("path", output_path) \
+        .outputMode("append") \
+        .start()
+
+    return query
