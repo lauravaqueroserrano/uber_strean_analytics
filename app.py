@@ -33,11 +33,11 @@ if 'timestamp_event' in df_rides.columns:
     df_rides['timestamp'] = pd.to_datetime(df_rides['timestamp_event'])
     df_rides['pickup_time'] = df_rides['timestamp']
     df_rides['dropoff_time'] = df_rides['pickup_time'] + timedelta(minutes=5)
-    
+
     # Fix start_coordinates from string to list
     df_rides['start_coordinates'] = df_rides['start_coordinates'].apply(ast.literal_eval)
     df_rides = df_rides[df_rides['start_coordinates'].apply(lambda x: isinstance(x, list) and len(x) == 2)]
-    
+
     df_rides[['pickup_lat', 'pickup_lon']] = pd.DataFrame(df_rides['start_coordinates'].tolist(), index=df_rides.index)
     df_rides['pickup_zone'] = df_rides['start_location']
     df_rides['status'] = df_rides['event_type']
@@ -60,9 +60,10 @@ df_alerts = load_alerts(traffic_path)
 df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 
-#previo
-# --- Sección 0: Total de Rides por Día de la Semana ---
-st.subheader("0. Total de Pedidos por Día de la Semana")
+
+
+# --- Section 0: Total Rides by Day of the Week ---
+st.subheader("0. Total Rides by Day of the Week")
 
 df_rides['weekday'] = df_rides['day_of_week']
 days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -84,8 +85,8 @@ fig0 = px.bar(
         'Saturday': '#8c564b',
         'Sunday': '#e377c2'
     },
-    title="Cantidad Total de Rides por Día de la Semana",
-    labels={'ride_count': 'Cantidad de viajes', 'weekday': 'Día'}
+    title="Total Rides by Day of the Week",
+    labels={'ride_count': 'Ride Count', 'weekday': 'Day'}
 )
 
 fig0.update_layout(
@@ -98,11 +99,7 @@ st.plotly_chart(fig0, use_container_width=True)
 
 
 
-# 1. Active Rides Over Time
-
-# --- Sección 1: Active Rides Over Time (una línea por selección de día) ---
-
-df_rides['weekday'] = df_rides['day_of_week']
+# --- Section 1: Active Rides Over Time ---
 df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
 x_min = df_rides['timestamp_15min'].min()
 x_max = df_rides['timestamp_15min'].max()
@@ -112,10 +109,10 @@ st.subheader("1. Active Rides Over Time")
 col1, col2 = st.columns([1, 4], gap="large")
 
 with col1:
-    st.markdown("### Día de la semana")
+    st.markdown("### Day of the Week")
     weekday_filter = st.radio(
         label="",
-        options=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        options=days_order,
         index=0
     )
 
@@ -123,7 +120,7 @@ with col2:
     df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
 
     if df_rides_filtered.empty:
-        st.warning(f"No hay datos para '{weekday_filter}'.")
+        st.warning(f"No data available for '{weekday_filter}'.")
     else:
         ride_counts = df_rides_filtered.groupby(
             df_rides_filtered['timestamp_15min']
@@ -134,9 +131,9 @@ with col2:
             x='timestamp_15min',
             y='ride_count',
             title=f"Active Rides Over Time - {weekday_filter}",
-            labels={'timestamp_15min': 'Hora', 'ride_count': 'Cantidad de viajes'},
+            labels={'timestamp_15min': 'Time', 'ride_count': 'Ride Count'},
             line_shape='spline',
-            color_discrete_sequence=['#1f77b4']  # Color fijo si quieres uno azul
+            color_discrete_sequence=['#1f77b4']
         )
 
         fig1.update_traces(line=dict(width=2))
@@ -157,34 +154,20 @@ with col2:
 
 
 
-
-
-
-
-
-
-
-
-
-
-# 2. Pickup Heatmap
-# --- Sección 2: Pickup Intensity Map con hover interactivo ---
-
+# --- Section 2: Pickup Heatmap (Interactive) ---
 st.subheader("2. Pickup Heatmap (Interactive)")
 st.caption("🖱️ Hover over a point to see the pickup zone and number of rides")
 
-# Agrupar coordenadas + zona con conteo
 pickup_summary = df_rides.groupby(['pickup_lat', 'pickup_lon', 'pickup_zone']) \
                          .size().reset_index(name='count')
 
-# Crear scatter map con puntos escalados por count
 fig2 = px.scatter_mapbox(
     pickup_summary,
     lat='pickup_lat',
     lon='pickup_lon',
     size='count',
     color='count',
-    color_continuous_scale='Hot',  # escala de calor
+    color_continuous_scale='Hot',
     size_max=30,
     zoom=11,
     center=dict(lat=40.4168, lon=-3.7038),
@@ -194,7 +177,6 @@ fig2 = px.scatter_mapbox(
 )
 
 st.plotly_chart(fig2, use_container_width=True)
-
 
 
 
