@@ -324,6 +324,99 @@ fig_bar.update_layout(
 st.plotly_chart(fig_bar, use_container_width=True)
 
 
+# --- Sección 9: Heatmap de Duración de Viajes por Día y Hora ---
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.stats import zscore
+
+st.subheader("9. Heatmap de Duración Promedio de Viajes")
+
+sessions = df_rides.pivot_table(index="ride_id", columns="event_type", values="timestamp", aggfunc="first")
+sessions["session_duration"] = (sessions["Ride finished"] - sessions["Request"]).dt.total_seconds() / 60
+sessions = sessions.dropna(subset=["session_duration"])
+sessions["hour"] = sessions["Request"].dt.hour
+sessions["day"] = sessions["Request"].dt.date
+
+heatmap_data = sessions.groupby(["day", "hour"]).agg(avg_duration=("session_duration", "mean")).reset_index()
+heatmap_pivot = heatmap_data.pivot(index="day", columns="hour", values="avg_duration")
+
+fig, ax = plt.subplots(figsize=(12, 6))
+sns.heatmap(heatmap_pivot, cmap="YlGnBu", linewidths=.5, ax=ax)
+ax.set_title("Duración Promedio (min) por Día y Hora")
+ax.set_xlabel("Hora del Día")
+ax.set_ylabel("Fecha")
+st.pyplot(fig)
+
+
+# --- Sección 10: Demanda vs Oferta por Hora (Stacked Bar) ---
+st.subheader("10. Demanda vs Oferta por Hora")
+demand_supply = df_rides[df_rides["event_type"].isin(["Request", "Driver available"])]
+demand_supply.set_index("timestamp", inplace=True)
+demand_supply = demand_supply.groupby([pd.Grouper(freq="H"), "event_type"]).size().unstack(fill_value=0)
+
+fig, ax = plt.subplots(figsize=(12, 5))
+demand_supply.plot(kind="bar", stacked=True, ax=ax)
+plt.title("Demanda vs Oferta Horaria (Request vs Driver available)")
+plt.xlabel("Hora")
+plt.ylabel("Número de Eventos")
+plt.xticks(rotation=45)
+plt.legend(title="Tipo de Evento")
+st.pyplot(fig)
+
+
+# --- Sección 11: Distribución de Cancelaciones ---
+st.subheader("11. Distribución de Finalización de Viajes")
+cancel_data = df_rides["event_type"].value_counts()
+cancel_data = cancel_data[cancel_data.index.isin(["Request", "Cancelled", "Ride finished"])]
+
+fig, ax = plt.subplots()
+ax.pie(cancel_data, labels=cancel_data.index, autopct='%1.1f%%', startangle=140)
+ax.set_title("Tasa de Cancelaciones vs Finalizaciones")
+st.pyplot(fig)
+
+
+# --- Sección 12: Detección de Anomalías: Z-Score en Request ---
+st.subheader("12. Detección de Picos Anómalos de Solicitudes")
+requests = df_rides[df_rides["event_type"] == "Request"].copy()
+requests["hour"] = requests["timestamp"].dt.floor("H")
+zone_hourly = requests.groupby(["start_location", "hour"]).size().reset_index(name="request_count")
+zone_hourly["zscore"] = zone_hourly.groupby("start_location")["request_count"].transform(zscore)
+anomalies = zone_hourly[zone_hourly["zscore"] > 3]
+
+st.dataframe(anomalies.sort_values("zscore", ascending=False).head(10))
+
+
+# --- Sección 13: Tiempos de Espera Largos ---
+st.subheader("13. Tiempos de Espera Anormalmente Largos")
+sessions = df_rides.pivot_table(index="ride_id", columns="event_type", values="timestamp", aggfunc="first")
+sessions["response_time"] = (sessions["Driver available"] - sessions["Request"]).dt.total_seconds() / 60
+threshold = sessions["response_time"].quantile(0.99)
+outliers = sessions[sessions["response_time"] > threshold]
+st.dataframe(outliers[["response_time"]].sort_values("response_time", ascending=False).head(10))
+
+
+# --- Sección 14: Viajes Incompletos (Inicio pero sin Final) ---
+st.subheader("14. Viajes Iniciados pero No Finalizados")
+started = set(df_rides[df_rides["event_type"] == "Start car ride"]["ride_id"])
+finished = set(df_rides[df_rides["event_type"] == "Ride finished"]["ride_id"])
+incomplete = list(started - finished)
+st.write(f"Cantidad de viajes iniciados pero no finalizados: {len(incomplete)}")
+
+
+# --- Sección 15: Solicitudes Frecuentes por Mismo Ride ID ---
+st.subheader("15. Solicitudes Repetidas por Ride ID")
+df_rides["minute"] = df_rides["timestamp"].dt.floor("T")
+frequent_requests = df_rides[df_rides["event_type"] == "Request"] \
+    .groupby(["ride_id", "minute"]).size().reset_index(name="request_count")
+spam_rides = frequent_requests[frequent_requests["request_count"] > 1]
+st.dataframe(spam_rides.head(10))
+
+
+# --- Sección 16: Rutas Repetidas Sospechosas ---
+st.subheader("16. Detección de Rutas Repetidas Sospechosas")
+route_patterns = df_rides.groupby(["start_location", "end_location"]).size().reset_index(name="count")
+templates = route_patterns[route_patterns["count"] > 50]
+st.dataframe(templates.sort_values("count", ascending=False).head(10))
 
 
 
