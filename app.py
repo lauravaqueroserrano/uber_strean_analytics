@@ -425,34 +425,41 @@ st.plotly_chart(fig12, use_container_width=True)
 
 
 # --- Sección 13: Tiempos de Espera Largos ---
-st.subheader("13. Tiempos de Espera Largos entre Request y Driver Available")
+# --- Sección 13: Tiempo de Espera hasta que empieza el Viaje ---
+st.subheader("13. Tiempo de Espera entre Request y Start car ride")
 
-# Filtramos solo los eventos necesarios
-filtered = df_rides[df_rides["event_type"].isin(["Request", "Driver available"])]
+# Filtrar solo los eventos necesarios
+filtered = df_rides[df_rides["event_type"].isin(["Request", "Start car ride"])]
 
-# Nos aseguramos de que estén ordenados por tiempo
+# Ordenar por ride_id y timestamp
 filtered = filtered.sort_values(["ride_id", "timestamp"])
 
-# Extraemos el primer Request y el primer Driver available por ride
+# Obtener el primer timestamp de cada evento por ride
 first_events = filtered.groupby(["ride_id", "event_type"])["timestamp"].first().unstack()
 
-# Eliminamos filas incompletas
-first_events = first_events.dropna(subset=["Request", "Driver available"])
+# Eliminar rides que no tienen ambos eventos
+first_events = first_events.dropna(subset=["Request", "Start car ride"])
 
 if first_events.empty:
-    st.warning("No hay viajes con ambos eventos: 'Request' y 'Driver available'")
+    st.warning("No hay viajes con ambos eventos: 'Request' y 'Start car ride'")
 else:
-    first_events["response_time"] = (first_events["Driver available"] - first_events["Request"]).dt.total_seconds() / 60
-    top_sessions = first_events.sort_values("response_time", ascending=False).head(15).reset_index()
+    # Calcular el tiempo de espera en segundos
+    first_events["wait_to_start"] = (first_events["Start car ride"] - first_events["Request"]).dt.total_seconds()
 
+    # Ordenar y seleccionar el top 15
+    top_sessions = first_events.sort_values("wait_to_start", ascending=False).head(15).reset_index()
+
+    # Crear gráfico interactivo
     fig = px.bar(
         top_sessions,
         x="ride_id",
-        y="response_time",
-        labels={"ride_id": "ID de viaje", "response_time": "Tiempo de espera (min)"},
-        title="Top 15 Viajes con Mayor Tiempo de Espera"
+        y="wait_to_start",
+        labels={"ride_id": "ID de viaje", "wait_to_start": "Tiempo de espera (seg)"},
+        title="Top 15 Viajes con Mayor Tiempo hasta que Empieza el Viaje"
     )
+
     st.plotly_chart(fig, use_container_width=True)
+
 
 
 
