@@ -425,19 +425,25 @@ st.plotly_chart(fig12, use_container_width=True)
 
 
 # --- Sección 13: Tiempos de Espera Largos ---
-# --- Sección 13: Tiempos de Espera Largos ---
 st.subheader("13. Tiempos de Espera Largos entre Request y Driver Available")
 
-sessions = df_rides.pivot_table(index="ride_id", columns="event_type", values="timestamp", aggfunc="first")
+# Filtramos solo los eventos necesarios
+filtered = df_rides[df_rides["event_type"].isin(["Request", "Driver available"])]
 
-# Ensure both events are present
-sessions = sessions.dropna(subset=["Request", "Driver available"])
+# Nos aseguramos de que estén ordenados por tiempo
+filtered = filtered.sort_values(["ride_id", "timestamp"])
 
-if sessions.empty:
+# Extraemos el primer Request y el primer Driver available por ride
+first_events = filtered.groupby(["ride_id", "event_type"])["timestamp"].first().unstack()
+
+# Eliminamos filas incompletas
+first_events = first_events.dropna(subset=["Request", "Driver available"])
+
+if first_events.empty:
     st.warning("No hay viajes con ambos eventos: 'Request' y 'Driver available'")
 else:
-    sessions["response_time"] = (sessions["Driver available"] - sessions["Request"]).dt.total_seconds() / 60
-    top_sessions = sessions.sort_values("response_time", ascending=False).head(15).reset_index()
+    first_events["response_time"] = (first_events["Driver available"] - first_events["Request"]).dt.total_seconds() / 60
+    top_sessions = first_events.sort_values("response_time", ascending=False).head(15).reset_index()
 
     fig = px.bar(
         top_sessions,
@@ -447,6 +453,7 @@ else:
         title="Top 15 Viajes con Mayor Tiempo de Espera"
     )
     st.plotly_chart(fig, use_container_width=True)
+
 
 
 
