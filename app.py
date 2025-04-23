@@ -426,6 +426,7 @@ st.plotly_chart(fig12, use_container_width=True)
 
 # --- Sección 13: Tiempos de Espera Largos ---
 
+
 # --- Section 13: Average Wait Time between Request and Driver Available ---
 st.subheader("13. Average Wait Time between Request and Driver Available")
 
@@ -450,6 +451,7 @@ else:
     # Compute and display the average wait time in seconds
     avg_wait_seconds = first_events["wait_to_driver_sec"].mean()
     st.metric(label="Average Wait Time (seconds)", value=f"{avg_wait_seconds:.2f}")
+
 
 
 
