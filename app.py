@@ -426,9 +426,6 @@ st.plotly_chart(fig12, use_container_width=True)
 
 # --- Sección 13: Tiempos de Espera Largos ---
 
-
-# --- Section 13: Average Wait Time between Request and Start car ride ---
-
 # --- Section 13: Average Wait Time between Request and Driver Available ---
 st.subheader("13. Average Wait Time between Request and Driver Available")
 
@@ -447,12 +444,13 @@ first_events = first_events.dropna(subset=["Request", "Driver available"])
 if first_events.empty:
     st.warning("No rides found with both events: 'Request' and 'Driver available'")
 else:
-    # Calculate wait time in minutes
-    first_events["wait_to_driver"] = (first_events["Driver available"] - first_events["Request"]).dt.total_seconds() / 60
+    # Calculate wait time in seconds
+    first_events["wait_to_driver_sec"] = (first_events["Driver available"] - first_events["Request"]).dt.total_seconds()
 
-    # Compute and display the average wait time
-    avg_wait_minutes = first_events["wait_to_driver"].mean()
-    st.metric(label="Average Wait Time (minutes)", value=f"{avg_wait_minutes:.2f}")
+    # Compute and display the average wait time in seconds
+    avg_wait_seconds = first_events["wait_to_driver_sec"].mean()
+    st.metric(label="Average Wait Time (seconds)", value=f"{avg_wait_seconds:.2f}")
+
 
 
 
