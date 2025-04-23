@@ -489,4 +489,6 @@ fig16 = px.bar(templates, x="count", y="start_location", color="end_location",
 st.plotly_chart(fig16, use_container_width=True)
 
 
+st.experimental_rerun()
+
 
