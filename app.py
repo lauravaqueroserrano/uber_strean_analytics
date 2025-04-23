@@ -466,22 +466,25 @@ else:
 
 
 # --- Sección 14: Viajes Incompletos (Inicio pero sin Final) ---
-# --- Sección 14: Viajes Incompletos (Inicio pero sin Final) ---
-st.subheader("14. Viajes Iniciados pero No Finalizados")
 
-started_df = df_rides[df_rides["event_type"] == "Start car ride"]
-finished_df = df_rides[df_rides["event_type"] == "Ride finished"]
+# --- Sección 14: Solicitudes sin Respuesta del Conductor ---
+st.subheader("14. Viajes Solicitados pero Sin Conductor Disponible")
 
-started_ids = set(started_df["ride_id"])
-finished_ids = set(finished_df["ride_id"])
-incomplete_ids = list(started_ids - finished_ids)
+# Filtramos ride_id según tipo de evento
+requested_ids = set(df_rides[df_rides["event_type"] == "Request"]["ride_id"])
+driver_available_ids = set(df_rides[df_rides["event_type"] == "Driver available"]["ride_id"])
 
-st.metric("Cantidad de viajes iniciados pero no finalizados", len(incomplete_ids))
+# Ride IDs que fueron solicitados pero nunca tuvieron driver
+unanswered_ids = list(requested_ids - driver_available_ids)
 
-# Show details if any exist
-if incomplete_ids:
-    incomplete_details = started_df[started_df["ride_id"].isin(incomplete_ids)]
-    st.dataframe(incomplete_details)
+# Mostrar métrica principal
+st.metric("Solicitudes sin respuesta de conductor", len(unanswered_ids))
+
+# Mostrar detalles
+if unanswered_ids:
+    unanswered_details = df_rides[df_rides["ride_id"].isin(unanswered_ids)]
+    st.dataframe(unanswered_details)
+
 
 
 
