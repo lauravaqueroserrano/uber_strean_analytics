@@ -3,7 +3,6 @@
 
 This project provides a real-time analytics dashboard for ride-sharing and traffic surge data in Madrid. It simulates Uber-style data pipelines using Streamlit for visualization and Apache Spark for ingestion from Azure Event Hub. Data is stored in JSON/Avro formats and transformed for real-time and historical analysis.
 
----
 
 ## 📁 Repository Structure
 
