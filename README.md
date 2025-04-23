@@ -4,7 +4,8 @@
 This project provides a real-time analytics dashboard for ride-sharing and traffic surge data in Madrid. It simulates Uber-style data pipelines using Streamlit for visualization and Apache Spark for ingestion from Azure Event Hub. Data is stored in JSON/Avro formats and transformed for real-time and historical analysis.
 
 
-## 📁 Repository Structure
+
+## Repository Structure
 
 ```
 .
@@ -20,9 +21,9 @@ This project provides a real-time analytics dashboard for ride-sharing and traff
 └── README.md
 ```
 
----
 
-## 🗂️ File Descriptions
+
+## File Descriptions
 
 - **`app.py`**: Main Streamlit app containing all dashboard visualizations (ride volumes, heatmaps, demand/supply, anomalies, etc.).
 - **`azure_connection.py`**: Defines Spark session and streaming pipeline from Azure Event Hub, using Avro data format.
@@ -34,9 +35,9 @@ This project provides a real-time analytics dashboard for ride-sharing and traff
 - **`traffic_surge_alerts.avro`**: Simulated raw traffic alert data in Avro format.
 - **`requirements.txt`**: List of required Python libraries (Streamlit, Pandas, Plotly, etc.).
 
----
 
-## 🚀 How to Run the Dashboard
+
+## How to Run the Dashboard
 
 ### 1. Clone the repository
 ```bash
@@ -56,5 +57,4 @@ streamlit run app.py
 
 > Ensure `ride_events.json` and `traffic_surge_alerts.json` are in the root folder before running.
 
----
 
