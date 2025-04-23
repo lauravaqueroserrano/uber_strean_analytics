@@ -324,6 +324,11 @@ fig_bar.update_layout(
 st.plotly_chart(fig_bar, use_container_width=True)
 
 
+
+
+
+
+
 # --- Sección 9: Heatmap de Duración de Viajes por Día y Hora ---
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -417,6 +422,5 @@ st.subheader("16. Detección de Rutas Repetidas Sospechosas")
 route_patterns = df_rides.groupby(["start_location", "end_location"]).size().reset_index(name="count")
 templates = route_patterns[route_patterns["count"] > 50]
 st.dataframe(templates.sort_values("count", ascending=False).head(10))
-
 
 
