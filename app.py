@@ -428,10 +428,12 @@ st.plotly_chart(fig12, use_container_width=True)
 
 
 # --- Section 13: Average Wait Time between Request and Start car ride ---
-st.subheader("13. Average Wait Time between Request and Start car ride")
+
+# --- Section 13: Average Wait Time between Request and Driver Available ---
+st.subheader("13. Average Wait Time between Request and Driver Available")
 
 # Filter only relevant events
-filtered = df_rides[df_rides["event_type"].isin(["Request", "Start car ride"])]
+filtered = df_rides[df_rides["event_type"].isin(["Request", "Driver available"])]
 
 # Sort by ride_id and timestamp
 filtered = filtered.sort_values(["ride_id", "timestamp"])
@@ -440,17 +442,18 @@ filtered = filtered.sort_values(["ride_id", "timestamp"])
 first_events = filtered.groupby(["ride_id", "event_type"])["timestamp"].first().unstack()
 
 # Drop rides without both events
-first_events = first_events.dropna(subset=["Request", "Start car ride"])
+first_events = first_events.dropna(subset=["Request", "Driver available"])
 
 if first_events.empty:
-    st.warning("No rides found with both events: 'Request' and 'Start car ride'")
+    st.warning("No rides found with both events: 'Request' and 'Driver available'")
 else:
-    # Calculate wait time in seconds
-    first_events["wait_to_start"] = (first_events["Start car ride"] - first_events["Request"]).dt.total_seconds()
+    # Calculate wait time in minutes
+    first_events["wait_to_driver"] = (first_events["Driver available"] - first_events["Request"]).dt.total_seconds() / 60
 
     # Compute and display the average wait time
-    avg_wait_time = first_events["wait_to_start"].mean()
-    st.metric(label="Average Wait Time (seconds)", value=f"{avg_wait_time:.2f}")
+    avg_wait_minutes = first_events["wait_to_driver"].mean()
+    st.metric(label="Average Wait Time (minutes)", value=f"{avg_wait_minutes:.2f}")
+
 
 
 
