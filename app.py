@@ -8,10 +8,9 @@ import ast
 from datetime import timedelta
 from scipy.stats import zscore
 
-
 # Set layout
 st.set_page_config(page_title="Uber Real-Time Dashboard", layout="wide")
-st.title("🚕 Uber Real-Time Analytics Dashboard")
+st.title("Uber Real-Time Analytics Dashboard")
 
 # Load data
 ride_path = "ride_events.json"
@@ -34,7 +33,6 @@ if 'timestamp_event' in df_rides.columns:
     df_rides['pickup_time'] = df_rides['timestamp']
     df_rides['dropoff_time'] = df_rides['pickup_time'] + timedelta(minutes=5)
 
-    # Fix start_coordinates from string to list
     df_rides['start_coordinates'] = df_rides['start_coordinates'].apply(ast.literal_eval)
     df_rides = df_rides[df_rides['start_coordinates'].apply(lambda x: isinstance(x, list) and len(x) == 2)]
 
@@ -59,41 +57,61 @@ def load_alerts(path):
 df_alerts = load_alerts(traffic_path)
 df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
+# Section 0: Total Rides by Day of the Week
+import plotly.express as px
+import streamlit as st
 
+st.header("Basic Analytics")
+st.subheader("1. Tumbling Technique: Total Rides by Day of the Week")
 
-
-
-
-# --- Section 0: Total Rides by Day of the Week ---
-st.subheader("1. Total Rides by Day of the Week")
-
+# Prepare data
 df_rides['weekday'] = df_rides['day_of_week']
 days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 rides_by_day = df_rides['weekday'].value_counts().reindex(days_order).reset_index()
 rides_by_day.columns = ['weekday', 'ride_count']
 
+# Refined green-only gradient
+custom_greens = [
+    [0.0, '#d0f0c0'],  # light mint green
+    [0.25, '#a8ddb5'],
+    [0.5, '#7bcb96'],
+    [0.75, '#4daf4a'],
+    [1.0, '#006400']   # forest green
+]
+
+# Build the bar chart
 fig0 = px.bar(
     rides_by_day,
     x='ride_count',
     y='weekday',
     orientation='h',
-    color='weekday',
-    color_discrete_map={
-        'Monday': '#1f77b4',
-        'Tuesday': '#ff7f0e',
-        'Wednesday': '#2ca02c',
-        'Thursday': '#d62728',
-        'Friday': '#9467bd',
-        'Saturday': '#8c564b',
-        'Sunday': '#e377c2'
-    },
+    color='ride_count',
+    color_continuous_scale=custom_greens,
     title="Total Rides by Day of the Week",
     labels={'ride_count': 'Ride Count', 'weekday': 'Day'}
 )
 
+# Style the layout
 fig0.update_layout(
     showlegend=False,
-    yaxis=dict(categoryorder='array', categoryarray=days_order)
+    yaxis=dict(categoryorder='array', categoryarray=days_order),
+    title_font_size=22,
+    xaxis_title_font=dict(size=16),
+    yaxis_title_font=dict(size=16),
+    xaxis_tickfont=dict(size=14),
+    yaxis_tickfont=dict(size=14),
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)',
+    margin=dict(l=80, r=40, t=60, b=40),
+    coloraxis_showscale=False
+)
+
+# Add values as text
+fig0.update_traces(
+    text=rides_by_day['ride_count'],
+    textposition='outside',
+    marker_line_color='white',
+    marker_line_width=1.2
 )
 
 st.plotly_chart(fig0, use_container_width=True)
@@ -101,22 +119,18 @@ st.plotly_chart(fig0, use_container_width=True)
 
 
 
-# --- Section 1: Active Rides Over Time ---
+
+# Section 1: Active Rides Over Time
+st.subheader("2. Hopping Technique: Active Rides Over Time")
 df_rides['timestamp_15min'] = df_rides['timestamp'].dt.floor('15T')
 x_min = df_rides['timestamp_15min'].min()
 x_max = df_rides['timestamp_15min'].max()
 
-st.subheader("1. Active Rides Over Time")
-
 col1, col2 = st.columns([1, 4], gap="large")
 
 with col1:
-    st.markdown("### Day of the Week")
-    weekday_filter = st.radio(
-        label="",
-        options=days_order,
-        index=0
-    )
+    st.markdown("### Select Day of the Week")
+    weekday_filter = st.radio(label="", options=days_order, index=0)
 
 with col2:
     df_rides_filtered = df_rides[df_rides['weekday'] == weekday_filter]
@@ -124,9 +138,7 @@ with col2:
     if df_rides_filtered.empty:
         st.warning(f"No data available for '{weekday_filter}'.")
     else:
-        ride_counts = df_rides_filtered.groupby(
-            df_rides_filtered['timestamp_15min']
-        ).size().reset_index(name='ride_count')
+        ride_counts = df_rides_filtered.groupby(df_rides_filtered['timestamp_15min']).size().reset_index(name='ride_count')
 
         fig1 = px.line(
             ride_counts,
@@ -135,18 +147,18 @@ with col2:
             title=f"Active Rides Over Time - {weekday_filter}",
             labels={'timestamp_15min': 'Time', 'ride_count': 'Ride Count'},
             line_shape='spline',
-            color_discrete_sequence=['#1f77b4']
+            color_discrete_sequence=['#2ca02c']  # green line
         )
 
         fig1.update_traces(line=dict(width=2))
         fig1.update_layout(
             hovermode='x unified',
-            xaxis=dict(
-                tickformat='%H:%M',
-                showgrid=False,
-                range=[x_min, x_max]
-            ),
-            yaxis=dict(showgrid=True)
+            xaxis=dict(tickformat='%H:%M', showgrid=False, range=[x_min, x_max]),
+            yaxis=dict(showgrid=True),
+            title_font_size=20,
+            xaxis_title_font=dict(size=14),
+            yaxis_title_font=dict(size=14),
+            margin=dict(l=50, r=40, t=50, b=40)
         )
 
         st.plotly_chart(fig1, use_container_width=True)
@@ -156,263 +168,81 @@ with col2:
 
 
 
-# --- Section 2: Pickup Heatmap (Interactive) ---
-st.subheader("2. Pickup Heatmap (Interactive)")
-st.caption("🖱️ Hover over a point to see the pickup zone and number of rides")
+# --- Section X: Distribution of Ride Requests by Uber Type (Pie Chart) ---
+st.subheader("3. Distribution of Ride Requests by Uber Type")
+st.caption("Proportion of 'Request' events by 'uber_share' or 'regular_uber' type")
 
-pickup_summary = df_rides.groupby(['pickup_lat', 'pickup_lon', 'pickup_zone']) \
-                         .size().reset_index(name='count')
+# Filter only 'Request' events
+requests = df_rides[df_rides["event_type"] == "Request"]
 
-fig2 = px.scatter_mapbox(
-    pickup_summary,
-    lat='pickup_lat',
-    lon='pickup_lon',
-    size='count',
-    color='count',
-    color_continuous_scale='Hot',
-    size_max=30,
-    zoom=11,
-    center=dict(lat=40.4168, lon=-3.7038),
-    mapbox_style='open-street-map',
-    hover_name='pickup_zone',
-    hover_data={'count': True, 'pickup_lat': False, 'pickup_lon': False}
+# Count by Uber type
+request_counts = requests["uber_type"].value_counts().reset_index()
+request_counts.columns = ["Uber Type", "Count"]
+
+# Pie chart
+fig_pie = px.pie(
+    request_counts,
+    names="Uber Type",
+    values="Count",
+    title="Proportion of Ride Requests by Uber Type",
+    color="Uber Type",
+    color_discrete_map={
+        "uber_share": "#1f77b4",       # blue
+        "regular_uber": "#2ca02c"      # green
+    },
+    hole=0.3  # makes it a donut chart if preferred
 )
 
-st.plotly_chart(fig2, use_container_width=True)
+st.plotly_chart(fig_pie, use_container_width=True)
 
+# Total
+st.metric("Total Ride Requests", len(requests))
 
 
+st.subheader("4. Comparison of Ubers vs. Users in Ubers")
+st.caption("Counts rides that started in the last 15 minutes. Assumes 100 Ubers available at the start.")
 
+# Ensure timestamp is in datetime format
+df_rides["timestamp"] = pd.to_datetime(df_rides["timestamp"])
 
+# Create 15-minute intervals
+df_rides["interval_15min"] = df_rides["timestamp"].dt.floor("15min")
 
+# Define time range to analyze
+all_intervals = pd.date_range(df_rides["timestamp"].min(), df_rides["timestamp"].max(), freq="15min")
 
-# 4. Ride Event Type Distribution & Incomplete Rides- RETOCAR, NO MIRAR
+# For each interval, count rides that started in the last 15 minutes
+active_summary = []
+for current_time in all_intervals:
+    start_time = current_time - pd.Timedelta(minutes=15)
 
-# --- Sección 4.1: Funnel de eventos con filtro por hora del día ---
+    mask = (
+        (df_rides["event_type"] == "Start car ride") &
+        (df_rides["timestamp"] > start_time) &
+        (df_rides["timestamp"] <= current_time)
+    )
 
-# Diccionario de colores (si aún no lo tienes en tu script)
-event_colors = {
-    'Request': '#1f77b4',
-    'Driver available': '#aec7e8',
-    'Start car ride': '#ff4d4d',
-    'Ride finished': '#ff9999'
-}
+    users = df_rides.loc[mask, "ride_id"].nunique()
+    ubers = 100 - users
 
-# Título de sección
-st.subheader("4.1 Avance de Viajes a través de Eventos (Funnel): RETOCAR, NO MIRAR")
-st.caption("Este gráfico muestra cuántos viajes llegan a cada etapa del proceso de servicio")
+    active_summary.append({
+        "interval_15min": current_time,
+        "users_in_uber": users,
+        "available_ubers": max(0, ubers)
+    })
 
-# Filtro por hora
-st.markdown("#### ⏰ Filtrar por hora del día")
-hour_range = st.slider("Selecciona un rango horario", 0, 23, (0, 23))
+# Create results dataframe
+df_result = pd.DataFrame(active_summary)
 
-# Asegurarse de que exista la columna 'hour'
-df_rides['hour'] = df_rides['timestamp'].dt.hour
+# Display in Streamlit
+st.dataframe(df_result, use_container_width=True)
 
-# Filtrar el DataFrame por el rango horario seleccionado
-df_filtered = df_rides[(df_rides['hour'] >= hour_range[0]) & (df_rides['hour'] <= hour_range[1])]
 
-# Definir las etapas del funnel
-funnel_steps = ['Request', 'Driver available', 'Start car ride', 'Ride finished']
-funnel_counts = []
 
-# Contar rides únicos que han pasado por cada etapa en el rango de horas
-for step in funnel_steps:
-    count = df_filtered[df_filtered['event_type'] == step]['ride_id'].nunique()
-    funnel_counts.append({'Etapa': step, 'Cantidad de viajes': count})
-
-# Crear DataFrame para el gráfico
-funnel_df = pd.DataFrame(funnel_counts)
-
-# Crear gráfico de barras horizontales tipo funnel
-fig_funnel = px.bar(
-    funnel_df,
-    x='Cantidad de viajes',
-    y='Etapa',
-    orientation='h',
-    text='Cantidad de viajes',
-    color='Etapa',
-    color_discrete_map=event_colors
-)
-
-fig_funnel.update_traces(textposition='outside')
-fig_funnel.update_layout(
-    yaxis=dict(categoryorder='array', categoryarray=funnel_steps[::-1]),
-    title=f"Flujo de eventos por viaje entre las {hour_range[0]}:00 y {hour_range[1]}:59",
-    showlegend=False
-)
-
-# Mostrar gráfico
-st.plotly_chart(fig_funnel, use_container_width=True)
-
-
-
-
-
-
-# 6. Live Traffic Surge Alerts by Zone
-st.subheader("6. Live Traffic Surge Alerts by Zone")
-surge_by_zone = df_alerts['zone'].value_counts().reset_index()
-surge_by_zone.columns = ['zone', 'alerts']
-fig6 = px.bar(surge_by_zone, x='zone', y='alerts')
-st.plotly_chart(fig6)
-
-# 6.1 Promedio de Surge Multiplier por Zona
-st.subheader("6.1 Promedio de Surge Multiplier por Zona")
-avg_surge = df_alerts.groupby('zone')['surge_multiplier'].mean().reset_index()
-fig_surge = px.bar(avg_surge, x='zone', y='surge_multiplier')
-st.plotly_chart(fig_surge)
-
-
-
-
-
-# 7. Ride Count vs. Surge Alerts Correlation
-
-
-
-#pruebaaaaa cual es mejor
-
-# 7. Ride Count vs. Surge Alerts Correlation - Mejorado con barras agrupadas
-st.subheader("7. Ride & Traffic Alerts per Zone")
-st.caption("Comparación directa de viajes y alertas en cada zona de recogida.")
-
-# Agrupación
-rides_per_zone = df_rides.groupby('pickup_zone').size().reset_index(name='Rides')
-alerts_per_zone = df_alerts.groupby('zone').size().reset_index(name='Alerts')
-
-# Merge
-merged = rides_per_zone.merge(alerts_per_zone, left_on='pickup_zone', right_on='zone')
-
-# Formato largo para px.bar con barras agrupadas
-df_melted = merged.melt(id_vars='pickup_zone', value_vars=['Rides', 'Alerts'],
-                        var_name='Tipo', value_name='Cantidad')
-
-# Plot
-fig_bar = px.bar(
-    df_melted,
-    x='pickup_zone',
-    y='Cantidad',
-    color='Tipo',
-    barmode='group',
-    text='Cantidad',
-    title="Comparación de Viajes y Alertas por Zona"
-)
-
-fig_bar.update_layout(
-    xaxis_title="Zona",
-    yaxis_title="Cantidad",
-    title_x=0.3,
-    xaxis_tickangle=-45,
-    height=500
-)
-
-st.plotly_chart(fig_bar, use_container_width=True)
-
-
-
-
-
-
-
-# --- Sección 9: Heatmap de Duración de Viajes por Día y Hora ---
-
-# --- Sección 9: Heatmap Interactivo de Duración de Viajes ---
-st.subheader("9. Heatmap Interactivo de Duración Promedio de Viajes")
-st.caption("Visualiza cuánto duran los viajes promedio por día y hora.")
-
-# Calcular duración por sesión
-sessions = df_rides.pivot_table(index="ride_id", columns="event_type", values="timestamp", aggfunc="first")
-sessions["session_duration"] = (sessions["Ride finished"] - sessions["Request"]).dt.total_seconds() / 60
-sessions = sessions.dropna(subset=["session_duration"])
-sessions["hour"] = sessions["Request"].dt.hour
-sessions["day"] = sessions["Request"].dt.strftime('%Y-%m-%d')  # para eje legible
-
-# Agrupar y pivotear
-heatmap_data = sessions.groupby(["day", "hour"]).agg(avg_duration=("session_duration", "mean")).reset_index()
-fig9 = px.density_heatmap(
-    heatmap_data,
-    x="hour",
-    y="day",
-    z="avg_duration",
-    color_continuous_scale="YlGnBu",
-    labels={"hour": "Hora del Día", "day": "Fecha", "avg_duration": "Duración Promedio (min)"},
-    title="Duración Promedio de Viajes por Día y Hora"
-)
-fig9.update_layout(height=400)
-st.plotly_chart(fig9, use_container_width=True)
-
-
-
-
-# --- Sección 10: Demanda vs Oferta por Hora (Stacked Bar) ---
-
-# --- Sección 10: Gráfico Apilado Demanda vs Oferta ---
-st.subheader("10. Demanda vs Oferta por Hora")
-st.caption("Compara el número de solicitudes con conductores disponibles por hora.")
-
-df_rides["hour"] = df_rides["timestamp"].dt.floor("H")
-demand_supply = df_rides[df_rides["event_type"].isin(["Request", "Driver available"])]
-demand_supply_count = demand_supply.groupby(["hour", "event_type"]).size().reset_index(name="count")
-
-fig10 = px.bar(
-    demand_supply_count,
-    x="hour",
-    y="count",
-    color="event_type",
-    barmode="stack",
-    labels={"hour": "Hora", "count": "Eventos", "event_type": "Tipo de Evento"},
-    title="Demanda vs Oferta Horaria"
-)
-fig10.update_layout(xaxis_tickformat="%H:%M", height=400)
-st.plotly_chart(fig10, use_container_width=True)
-
-
-
-# --- Sección 11: Distribución de Cancelaciones ---
-
-# --- Sección 11: Pie Interactivo de Finalización/Cancelación ---
-st.subheader("11. Tasa de Cancelaciones y Finalizaciones")
-st.caption("Visualiza la proporción entre viajes completados y cancelados.")
-
-cancel_data = df_rides["event_type"].value_counts()
-cancel_data = cancel_data[cancel_data.index.isin(["Request", "Cancelled", "Ride finished"])].reset_index()
-cancel_data.columns = ["event_type", "count"]
-
-fig11 = px.pie(
-    cancel_data,
-    values="count",
-    names="event_type",
-    title="Distribución de Eventos de Viaje",
-    hole=0.4
-)
-st.plotly_chart(fig11, use_container_width=True)
-
-
-
-# --- Sección 12: Detección de Anomalías: Z-Score en Request ---
-st.subheader("12. Picos Anómalos de Solicitudes por Zona")
-
-requests = df_rides[df_rides["event_type"] == "Request"].copy()
-requests["hour"] = requests["timestamp"].dt.floor("H")
-zone_hourly = requests.groupby(["start_location", "hour"]).size().reset_index(name="request_count")
-zone_hourly["zscore"] = zone_hourly.groupby("start_location")["request_count"].transform(zscore)
-anomalies = zone_hourly[zone_hourly["zscore"] > 3]
-
-fig12 = px.scatter(
-    anomalies, x="hour", y="request_count", color="start_location", size="zscore",
-    hover_data=["zscore"],
-    title="Zonas con Solicitudes Anómalas (Z-score > 3)"
-)
-st.plotly_chart(fig12, use_container_width=True)
-
-
-
-# --- Sección 13: Tiempos de Espera Largos ---
-
+# --- Section 13: Long Wait Times ---
 
 # --- Section 13: Average Wait Time between Request and Driver Available ---
-st.subheader("13. Average Wait Time between Request and Driver Available")
+st.subheader("5. Average Wait Time between Request and Driver Available")
 
 # Filter only relevant events
 filtered = df_rides[df_rides["event_type"].isin(["Request", "Driver available"])]
@@ -440,61 +270,389 @@ else:
 
 
 
+# --- Section +1: Top 10 Longest Unique Durations ---
+st.subheader("6. Top 10 Longest Unique Durations (Start → Finish)")
+st.caption("Shows the longest durations without repeated times")
+
+# Filter relevant events
+ride_events = df_rides[df_rides["event_type"].isin(["Start car ride", "Ride finished"])]
+ride_events = ride_events.sort_values(["ride_id", "timestamp"])
+
+# Group and get timestamps
+start_finish = ride_events.groupby(["ride_id", "event_type"])["timestamp"].first().unstack()
+start_finish = start_finish.dropna(subset=["Start car ride", "Ride finished"])
+
+# Calculate duration
+start_finish["ride_duration_min"] = (start_finish["Ride finished"] - start_finish["Start car ride"]).dt.total_seconds() / 60
+
+# Remove duplicate durations
+unique_durations = start_finish.drop_duplicates(subset="ride_duration_min")
+
+# Top 10 longest
+top_unique = unique_durations.sort_values("ride_duration_min", ascending=False).head(10).reset_index()
+
+# Plot
+fig_top_unique = px.bar(
+    top_unique,
+    x="ride_duration_min",
+    y="ride_id",
+    orientation="h",
+    color="ride_duration_min",
+    color_continuous_scale="Greens",
+    labels={"ride_duration_min": "Duration (min)", "ride_id": "Ride ID"},
+    title="Top 10 Rides with Longest Unique Durations"
+)
+
+fig_top_unique.update_layout(yaxis=dict(autorange="reversed"))
+fig_top_unique.update_traces(text=top_unique["ride_duration_min"].round(1), textposition="outside")
+
+st.plotly_chart(fig_top_unique, use_container_width=True)
 
 
 
 
 
-# --- Sección 14: Viajes Incompletos (Inicio pero sin Final) ---
+# --- Section 14: Incomplete Rides ---
 
-# --- Sección 14: Solicitudes sin Respuesta del Conductor ---
-st.subheader("14. Viajes Solicitados pero Sin Conductor Disponible")
+st.subheader("7. Number of Cancelled Ubers")
 
-# Filtramos ride_id según tipo de evento
-requested_ids = set(df_rides[df_rides["event_type"] == "Request"]["ride_id"])
-driver_available_ids = set(df_rides[df_rides["event_type"] == "Driver available"]["ride_id"])
+ride_id_counts = df_rides['ride_id'].value_counts()
+single_rides = ride_id_counts[ride_id_counts == 1].index
 
-# Ride IDs que fueron solicitados pero nunca tuvieron driver
-unanswered_ids = list(requested_ids - driver_available_ids)
-
-# Mostrar métrica principal
-st.metric("Solicitudes sin respuesta de conductor", len(unanswered_ids))
-
-# Mostrar detalles
-if unanswered_ids:
-    unanswered_details = df_rides[df_rides["ride_id"].isin(unanswered_ids)]
-    st.dataframe(unanswered_details)
+# Display metric only
+st.metric("Cancelled Ubers", len(single_rides))
 
 
 
-
-
-# --- Sección 15: Solicitudes Frecuentes por Mismo Ride ID ---
-st.subheader("15. Solicitudes Repetidas por Ride ID en el mismo minuto")
-
-df_rides["minute"] = df_rides["timestamp"].dt.floor("T")
-frequent_requests = df_rides[df_rides["event_type"] == "Request"] \
-    .groupby(["ride_id", "minute"]).size().reset_index(name="request_count")
-spam_rides = frequent_requests[frequent_requests["request_count"] > 1]
-
-fig15 = px.histogram(spam_rides, x="request_count", nbins=10,
-                     title="Distribución de Solicitudes Repetidas")
-st.plotly_chart(fig15, use_container_width=True)
-st.dataframe(spam_rides)
+st.header("Intermediate Analytics")
 
 
 
-# --- Sección 16: Rutas Repetidas Sospechosas ---
-st.subheader("16. Rutas Sospechosas (Repetidas más de 50 veces)")
+# --- Section 9: Trip Duration Heatmap by Day and Hour ---
+# --- Section 9 (Revised): Interactive Heatmap of Active Ubers by Day and Minute ---
+st.subheader("1. Active Ubers by Day and Minute")
+st.caption("Visualize how many Ubers are active per minute on each day")
+
+# Create exact minute column (rounded to the minute)
+df_rides['minute'] = df_rides['timestamp'].dt.floor("T")  # floor to exact minute
+
+# Create readable date column
+df_rides['day'] = df_rides['minute'].dt.strftime("%Y-%m-%d")
+
+# Create readable hour:minute string for X-axis
+df_rides['minute_str'] = df_rides['minute'].dt.strftime("%H:%M")
+
+# Group by day and minute, counting active Ubers
+active_by_minute = df_rides.groupby(["day", "minute_str"]).size().reset_index(name="active_ubers")
+
+# Create heatmap
+fig9 = px.density_heatmap(
+    active_by_minute,
+    x="minute_str",
+    y="day",
+    z="active_ubers",
+    color_continuous_scale="Greens",
+    title="Active Ubers by Day and Minute",
+    labels={"minute_str": "Time (HH:MM)", "day": "Date", "active_ubers": "Active Ubers"}
+)
+
+# Better visuals
+fig9.update_layout(
+    height=500,
+    xaxis_nticks=24,  # adjust based on how many minutes you want to show per hour
+)
+
+st.plotly_chart(fig9, use_container_width=True)
+
+
+st.header("Advanced Analytics")
+
+
+import pandas as pd
+import numpy as np
+from scipy.stats import zscore
+
+st.subheader("1. Anomalous Request Peaks by Zone (Every 15 Minutes)")
+
+# Filter requests
+requests = df_rides[df_rides["event_type"] == "Request"].copy()
+
+# Group by zone and 15-minute intervals
+requests["interval_15min"] = requests["timestamp"].dt.floor("15min")
+zone_15min = requests.groupby(["start_location", "interval_15min"]).size().reset_index(name="request_count")
+
+# Z-score by zone
+zone_15min["zscore"] = zone_15min.groupby("start_location")["request_count"].transform(
+    lambda x: zscore(x, ddof=0) if len(x) > 1 else 0
+)
+
+# Filter moderate anomalies (currently zscore > 1 to get data)
+anomalies = zone_15min[zone_15min["zscore"] > 1]
+
+# CONDITIONAL FORMATTING FUNCTION FOR ENTIRE ROW
+def highlight_row(row):
+    if row["request_count"] in [4]:
+        return ['background-color: #ffe6e6'] * len(row)
+    return [''] * len(row)
+
+# Apply row-wise styling
+styled_df = anomalies.style.apply(highlight_row, axis=1).format({"zscore": "{:.4f}"})
+
+# Display styled table
+st.dataframe(styled_df, use_container_width=True)
+
+
+
+
+
+
+
+
+
+# --- Section 16: Suspicious Repeated Routes ---
+
+st.subheader("2. Suspicious Routes (Repeated more than 50 times)")
 
 route_patterns = df_rides.groupby(["start_location", "end_location"]).size().reset_index(name="count")
-templates = route_patterns[route_patterns["count"] > 50].sort_values("count", ascending=False)
+templates = route_patterns[route_patterns["count"] > 10].sort_values("count", ascending=False)
 
-fig16 = px.bar(templates, x="count", y="start_location", color="end_location",
-               orientation="h", title="Rutas Repetidas Sospechosamente")
+# Custom darker green gradient
+darker_greens = [
+    "#74c476",  # medium green
+    "#31a354",  # darker
+    "#006d2c"   # forest green
+]
+
+fig16 = px.bar(
+    templates,
+    x="count",
+    y="start_location",
+    color="count",
+    orientation="h",
+    color_continuous_scale=darker_greens,
+    title="Suspiciously Repeated Routes"
+)
+
+fig16.update_layout(
+    xaxis_title="Number of Repeats",
+    yaxis_title="Start Location",
+    title_font_size=20,
+    height=500,
+    coloraxis_showscale=False,
+    margin=dict(l=80, r=40, t=60, b=40),
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)'
+)
+
 st.plotly_chart(fig16, use_container_width=True)
 
 
-st.experimental_rerun()
 
 
+
+# --- Section 2: Pickup Heatmap (Interactive) ---
+
+st.subheader("3. Pickup Heatmap")
+st.caption("3. Hover over a point to see the pickup zone and number of rides")
+
+pickup_summary = df_rides.groupby(['pickup_lat', 'pickup_lon', 'pickup_zone']) \
+                         .size().reset_index(name='count')
+
+fig2 = px.scatter_mapbox(
+    pickup_summary,
+    lat='pickup_lat',
+    lon='pickup_lon',
+    size='count',
+    color='count',
+    color_continuous_scale='Greens',  # changed from 'Hot' to 'Greens'
+    size_max=30,
+    zoom=11,
+    center=dict(lat=40.4168, lon=-3.7038),
+    mapbox_style='open-street-map',
+    hover_name='pickup_zone',
+    hover_data={'count': True, 'pickup_lat': False, 'pickup_lon': False},
+    title="Pickup Density by Location"
+)
+
+fig2.update_layout(
+    margin=dict(l=10, r=10, t=40, b=10),
+    height=500,
+    coloraxis_showscale=True
+)
+
+st.plotly_chart(fig2, use_container_width=True)
+
+
+
+
+
+
+import plotly.express as px
+import streamlit as st
+import pandas as pd
+
+
+# Título de la sección
+st.subheader("4. Ride Event Volume Over a Time Range")
+st.caption("Este gráfico muestra cuántos eventos ocurrieron por tipo durante el rango de tiempo seleccionado.")
+
+# Asegurarse de que el timestamp esté redondeado a minuto
+df_rides["timestamp_min"] = df_rides["timestamp"].dt.floor("min")
+
+# Obtener los límites del tiempo
+min_time = df_rides["timestamp_min"].min().to_pydatetime()
+max_time = df_rides["timestamp_min"].max().to_pydatetime()
+
+# Selector de rango de tiempo
+time_range = st.slider(
+    "Selecciona un rango de tiempo (resolución por minuto):",
+    min_value=min_time,
+    max_value=max_time,
+    value=(min_time, max_time),
+    format="HH:mm"
+)
+
+# Filtrar eventos que ocurrieron dentro del rango exacto (NO acumulado)
+df_events_in_range = df_rides[
+    (df_rides["timestamp_min"] >= time_range[0]) &
+    (df_rides["timestamp_min"] <= time_range[1])
+]
+
+# Contar eventos por tipo dentro del rango
+funnel_steps = ['Request', 'Driver available', 'Start car ride', 'Ride finished']
+event_counts = df_events_in_range['event_type'].value_counts().reindex(funnel_steps, fill_value=0).reset_index()
+event_counts.columns = ['Stage', 'Number of events']
+
+# Colores verde oscuro bonitos
+custom_greens = ["#a1d99b", "#74c476", "#31a354", "#006d2c"]
+max_val = event_counts["Number of events"].max()
+
+event_counts["color"] = event_counts["Number of events"].apply(
+    lambda x: custom_greens[int((x / max_val) * (len(custom_greens) - 1))] if max_val > 0 else custom_greens[0]
+)
+
+# Título dinámico
+title_text = f"Event Counts Occurring During {time_range[0].strftime('%H:%M')} – {time_range[1].strftime('%H:%M')}"
+
+# Gráfico de barras horizontal
+fig_event_volume = px.bar(
+    event_counts,
+    x="Number of events",
+    y="Stage",
+    orientation="h",
+    text="Number of events",
+    color="color",
+    color_discrete_map={c: c for c in event_counts["color"]},
+    title=title_text
+)
+
+fig_event_volume.update_traces(
+    textposition="outside",
+    marker_line_color='white',
+    marker_line_width=1.3
+)
+
+fig_event_volume.update_layout(
+    yaxis=dict(categoryorder="array", categoryarray=funnel_steps[::-1]),
+    showlegend=False,
+    xaxis_title="Número de Eventos",
+    yaxis_title="Tipo de Evento",
+    margin=dict(l=80, r=40, t=60, b=40),
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)'
+)
+
+# Mostrar gráfico
+st.plotly_chart(fig_event_volume, use_container_width=True)
+
+
+
+
+# 4. Live Traffic Surge Alerts by Zone
+st.subheader("5. Live Traffic Surge Alerts by Zone")
+surge_by_zone = df_alerts['zone'].value_counts().reset_index()
+surge_by_zone.columns = ['zone', 'alerts']
+fig6 = px.bar(
+    surge_by_zone,
+    x='zone',
+    y='alerts',
+    color='alerts',
+    color_continuous_scale='Greens',
+    title="Number of Traffic Surge Alerts per Zone",
+    labels={'alerts': 'Alert Count', 'zone': 'Zone'}
+)
+fig6.update_layout(
+    xaxis_tickangle=-45,
+    height=400,
+    coloraxis_showscale=False
+)
+st.plotly_chart(fig6, use_container_width=True)
+
+
+# 5. Average Surge Multiplier by Zone
+st.subheader("6. Average Surge Multiplier by Zone")
+avg_surge = df_alerts.groupby('zone')['surge_multiplier'].mean().reset_index()
+fig_surge = px.bar(
+    avg_surge,
+    x='zone',
+    y='surge_multiplier',
+    color='surge_multiplier',
+    color_continuous_scale='Greens',
+    title="Average Surge Multiplier per Zone",
+    labels={'surge_multiplier': 'Avg Surge Multiplier', 'zone': 'Zone'}
+)
+fig_surge.update_layout(
+    xaxis_tickangle=-45,
+    height=400,
+    coloraxis_showscale=False
+)
+st.plotly_chart(fig_surge, use_container_width=True)
+
+
+# 6. Ride & Traffic Alerts per Zone - Grouped Bar Chart
+st.subheader("7. Ride & Traffic Alerts per Zone")
+st.caption("Direct comparison of rides and alerts in each pickup zone.")
+
+# Grouping
+rides_per_zone = df_rides.groupby('pickup_zone').size().reset_index(name='Rides')
+alerts_per_zone = df_alerts.groupby('zone').size().reset_index(name='Alerts')
+
+# Merge dataframes
+merged = rides_per_zone.merge(alerts_per_zone, left_on='pickup_zone', right_on='zone')
+
+# Melt to long format for grouped bars
+df_melted = merged.melt(
+    id_vars='pickup_zone',
+    value_vars=['Rides', 'Alerts'],
+    var_name='Type',
+    value_name='Count'
+)
+
+# Custom green tones for categories
+green_palette = {
+    'Rides': '#31a354',    # vivid green
+    'Alerts': '#a1d99b'    # light leafy green
+}
+
+fig_bar = px.bar(
+    df_melted,
+    x='pickup_zone',
+    y='Count',
+    color='Type',
+    barmode='group',
+    text='Count',
+    color_discrete_map=green_palette,
+    title="Comparison of Rides and Alerts by Zone"
+)
+
+fig_bar.update_layout(
+    xaxis_title="Zone",
+    yaxis_title="Count",
+    title_x=0.3,
+    xaxis_tickangle=-45,
+    height=500,
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)'
+)
+
+st.plotly_chart(fig_bar, use_container_width=True)
