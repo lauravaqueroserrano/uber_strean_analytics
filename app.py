@@ -425,40 +425,33 @@ st.plotly_chart(fig12, use_container_width=True)
 
 
 # --- Sección 13: Tiempos de Espera Largos ---
-# --- Sección 13: Tiempo de Espera hasta que empieza el Viaje ---
-st.subheader("13. Tiempo de Espera entre Request y Start car ride")
 
-# Filtrar solo los eventos necesarios
+
+# --- Section 13: Average Wait Time between Request and Start car ride ---
+st.subheader("13. Average Wait Time between Request and Start car ride")
+
+# Filter only relevant events
 filtered = df_rides[df_rides["event_type"].isin(["Request", "Start car ride"])]
 
-# Ordenar por ride_id y timestamp
+# Sort by ride_id and timestamp
 filtered = filtered.sort_values(["ride_id", "timestamp"])
 
-# Obtener el primer timestamp de cada evento por ride
+# Get the first timestamp of each event per ride
 first_events = filtered.groupby(["ride_id", "event_type"])["timestamp"].first().unstack()
 
-# Eliminar rides que no tienen ambos eventos
+# Drop rides without both events
 first_events = first_events.dropna(subset=["Request", "Start car ride"])
 
 if first_events.empty:
-    st.warning("No hay viajes con ambos eventos: 'Request' y 'Start car ride'")
+    st.warning("No rides found with both events: 'Request' and 'Start car ride'")
 else:
-    # Calcular el tiempo de espera en segundos
+    # Calculate wait time in seconds
     first_events["wait_to_start"] = (first_events["Start car ride"] - first_events["Request"]).dt.total_seconds()
 
-    # Ordenar y seleccionar el top 15
-    top_sessions = first_events.sort_values("wait_to_start", ascending=False).head(15).reset_index()
+    # Compute and display the average wait time
+    avg_wait_time = first_events["wait_to_start"].mean()
+    st.metric(label="Average Wait Time (seconds)", value=f"{avg_wait_time:.2f}")
 
-    # Crear gráfico interactivo
-    fig = px.bar(
-        top_sessions,
-        x="ride_id",
-        y="wait_to_start",
-        labels={"ride_id": "ID de viaje", "wait_to_start": "Tiempo de espera (seg)"},
-        title="Top 15 Viajes con Mayor Tiempo hasta que Empieza el Viaje"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
 
 
 
