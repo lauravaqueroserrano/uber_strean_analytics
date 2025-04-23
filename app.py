@@ -59,7 +59,7 @@ df_alerts['timestamp'] = pd.to_datetime(df_alerts['timestamp'])
 
 
 # --- Section 0: Total Rides by Day of the Week ---
-st.subheader("0. Total Rides by Day of the Week")
+st.subheader("1. Total Rides by Day of the Week")
 
 df_rides['weekday'] = df_rides['day_of_week']
 days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
