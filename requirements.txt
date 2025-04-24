@@ -4,3 +4,4 @@ plotly
 seaborn
 matplotlib
 scipy
+azure-storage-blob
