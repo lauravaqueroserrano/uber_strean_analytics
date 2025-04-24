@@ -40,8 +40,8 @@ def load_alerts_from_blob(blob_name):
     return pd.DataFrame(flat_alerts)
 
 # Read data from blob
-df_rides = read_json_from_blob("ride_events.json")
-df_alerts = load_alerts_from_blob("traffic_surge_alerts.json")
+df_rides = read_json_from_blob("ride_stream")
+df_alerts = load_alerts_from_blob("traffic_stream")
 
 
 
