@@ -7,25 +7,43 @@ import os
 import ast
 from datetime import timedelta
 from scipy.stats import zscore
+from azure.storage.blob import BlobServiceClient
+from io import BytesIO
 
 # Set layout
 st.set_page_config(page_title="Uber Real-Time Dashboard", layout="wide")
 st.title("Uber Real-Time Analytics Dashboard")
 
-# Load data
-ride_path = "ride_events.json"
-traffic_path = "traffic_surge_alerts.json"
+# Azure connection
+conn_str = "DefaultEndpointsProtocol=https;AccountName=iesstsabbadbab;AccountKey=/Z4VcADF8fi/0zqf5v4aJk47k5MAUZFTVx7bkbdId3N0zG+UQv7bmA9Qr6ygGEGMEYwikrOBfRjk+AStl5SehA==;EndpointSuffix=core.windows.net"
+container_name = "group4"
 
-# Check if files exist
-if not os.path.exists(ride_path):
-    st.error(f"Ride events file not found: {ride_path}")
-    st.stop()
-if not os.path.exists(traffic_path):
-    st.error(f"Traffic alerts file not found: {traffic_path}")
-    st.stop()
+blob_service_client = BlobServiceClient.from_connection_string(conn_str)
+container_client = blob_service_client.get_container_client(container_name)
 
-# Load JSON data
-df_rides = pd.read_json(ride_path)
+def read_json_from_blob(blob_name):
+    blob_client = container_client.get_blob_client(blob_name)
+    stream = BytesIO()
+    blob_client.download_blob().readinto(stream)
+    stream.seek(0)
+    return pd.read_json(stream)
+
+def load_alerts_from_blob(blob_name):
+    blob_client = container_client.get_blob_client(blob_name)
+    raw_json = blob_client.download_blob().readall()
+    raw_alerts = json.loads(raw_json)
+    flat_alerts = []
+    for zone, alerts in raw_alerts.items():
+        for alert in alerts:
+            alert["zone"] = zone
+            flat_alerts.append(alert)
+    return pd.DataFrame(flat_alerts)
+
+# Read data from blob
+df_rides = read_json_from_blob("ride_events.json")
+df_alerts = load_alerts_from_blob("traffic_surge_alerts.json")
+
+
 
 # Transform ride data
 if 'timestamp_event' in df_rides.columns:
