@@ -39,9 +39,28 @@ def load_alerts_from_blob(blob_name):
             flat_alerts.append(alert)
     return pd.DataFrame(flat_alerts)
 
+def read_jsons_from_prefix(prefix):
+    dataframes = []
+    for blob in container_client.list_blobs(name_starts_with=prefix):
+        if blob.name.endswith(".json"):
+            blob_client = container_client.get_blob_client(blob)
+            content = blob_client.download_blob().readall()
+            try:
+                df = pd.read_json(BytesIO(content))
+                dataframes.append(df)
+            except ValueError as e:
+                st.warning(f"❌ Error leyendo {blob.name}: {e}")
+    if dataframes:
+        return pd.concat(dataframes, ignore_index=True)
+    else:
+        st.error(f"No JSON files found under prefix: {prefix}")
+        st.stop()
+
+
 # Read data from blob
-df_rides = read_json_from_blob("ride_stream")
-df_alerts = load_alerts_from_blob("traffic_stream")
+df_rides = read_jsons_from_prefix("ride_stream/")
+df_alerts = read_jsons_from_prefix("traffic_stream/")
+
 
 
 
